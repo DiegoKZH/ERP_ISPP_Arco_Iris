@@ -57,6 +57,20 @@ class Connection implements ConnectionInterface
     protected $readPdoConfig = [];
 
     /**
+     * The active PDO connection used for direct connections.
+     *
+     * @var \PDO|(\Closure(): \PDO)
+     */
+    protected $directPdo;
+
+    /**
+     * The database connection configuration options for direct connections.
+     *
+     * @var array
+     */
+    protected $directPdoConfig = [];
+
+    /**
      * The name of the connected database.
      *
      * @var string
@@ -213,7 +227,7 @@ class Connection implements ConnectionInterface
     /**
      * The last retrieved PDO read / write type.
      *
-     * @var null|'read'|'write'
+     * @var null|'read'|'write'|'direct'
      */
     protected $latestPdoTypeRetrieved = null;
 
@@ -702,7 +716,7 @@ class Connection implements ConnectionInterface
     /**
      * Execute the given callback in "dry run" mode.
      *
-     * @param  (\Closure(): array{query: string, bindings: array, time: float|null}[])  $callback
+     * @param  (\Closure(): (array{query: string, bindings: array, time: float|null}[]))  $callback
      * @return array{query: string, bindings: array, time: float|null}[]
      */
     protected function withFreshQueryLog($callback)
@@ -847,6 +861,7 @@ class Connection implements ConnectionInterface
                 $e,
                 $this->getConnectionDetails(),
                 $this->latestReadWriteTypeUsed(),
+                (bool) $this->getConfig('mask_bindings_in_exception_messages'),
             );
 
             if ($isUniqueConstraintError) {
@@ -1061,7 +1076,9 @@ class Connection implements ConnectionInterface
      */
     public function disconnect()
     {
-        $this->setPdo(null)->setReadPdo(null);
+        $this->transactionsManager?->rollback($this->getName(), 0);
+
+        $this->setPdo(null)->setReadPdo(null)->setDirectPdo(null);
     }
 
     /**
@@ -1330,6 +1347,32 @@ class Connection implements ConnectionInterface
     }
 
     /**
+     * Get the current PDO connection used for direct connections.
+     *
+     * @return \PDO
+     */
+    public function getDirectPdo()
+    {
+        $this->latestPdoTypeRetrieved = 'direct';
+
+        if ($this->directPdo instanceof Closure) {
+            return $this->directPdo = call_user_func($this->directPdo);
+        }
+
+        return $this->directPdo ?: $this->getPdo();
+    }
+
+    /**
+     * Get the current direct PDO connection parameter without executing any reconnect logic.
+     *
+     * @return \PDO|\Closure|null
+     */
+    public function getRawDirectPdo()
+    {
+        return $this->directPdo;
+    }
+
+    /**
      * Set the PDO connection.
      *
      * @param  \PDO|\Closure|null  $pdo
@@ -1371,6 +1414,52 @@ class Connection implements ConnectionInterface
     }
 
     /**
+     * Set the PDO connection used for direct connections.
+     *
+     * @param  \PDO|\Closure|null  $pdo
+     * @return $this
+     */
+    public function setDirectPdo($pdo)
+    {
+        $this->directPdo = $pdo;
+
+        return $this;
+    }
+
+    /**
+     * Set the direct PDO connection configuration.
+     *
+     * @param  array  $config
+     * @return $this
+     */
+    public function setDirectPdoConfig(array $config)
+    {
+        $this->directPdoConfig = $config;
+
+        return $this;
+    }
+
+    /**
+     * Get the direct PDO connection configuration.
+     *
+     * @return array
+     */
+    public function getDirectPdoConfig()
+    {
+        return $this->directPdoConfig;
+    }
+
+    /**
+     * Determine if this connection has a direct PDO connection configured.
+     *
+     * @return bool
+     */
+    public function hasDirectConnection()
+    {
+        return ! empty($this->directPdoConfig);
+    }
+
+    /**
      * Set the reconnect instance on the connection.
      *
      * @param  (callable(\Illuminate\Database\Connection): mixed)  $reconnector
@@ -1390,7 +1479,11 @@ class Connection implements ConnectionInterface
      */
     public function getName()
     {
-        return $this->getConfig('name');
+        $name = $this->getConfig('name');
+
+        return $this->readWriteType === 'direct' && $name
+            ? $name.'::direct'
+            : $name;
     }
 
     /**
@@ -1400,7 +1493,7 @@ class Connection implements ConnectionInterface
      */
     public function getNameWithReadWriteType()
     {
-        $name = $this->getName().($this->readWriteType ? '::'.$this->readWriteType : '');
+        $name = $this->getConfig('name').($this->readWriteType ? '::'.$this->readWriteType : '');
 
         return empty($name) ? null : $name;
     }
@@ -1423,9 +1516,11 @@ class Connection implements ConnectionInterface
      */
     protected function getConnectionDetails()
     {
-        $config = $this->latestReadWriteTypeUsed() === 'read'
-            ? $this->readPdoConfig
-            : $this->config;
+        $config = match ($this->latestReadWriteTypeUsed()) {
+            'read' => $this->readPdoConfig,
+            'direct' => $this->directPdoConfig,
+            default => $this->config,
+        };
 
         return [
             'driver' => $this->getDriverName(),
@@ -1707,7 +1802,7 @@ class Connection implements ConnectionInterface
     /**
      * Retrieve the latest read / write type used.
      *
-     * @return 'read'|'write'|null
+     * @return 'read'|'write'|'direct'|null
      */
     protected function latestReadWriteTypeUsed()
     {

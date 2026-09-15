@@ -1,16 +1,14 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import { bunny } from 'laravel-vite-plugin/fonts';
-//import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import path from 'path';
 
 export default defineConfig({
     plugins: [
         laravel({
             input: [
-                'resources/css/app.css', 
-                'resources/js/app.jsx',
-                'resources/js/login.jsx',
+                'frontend/src/app.jsx',
             ],
             refresh: true,
             fonts: [
@@ -21,9 +19,14 @@ export default defineConfig({
         }),
         react(),
     ],
+    resolve: {
+        alias: {
+            '@': path.resolve(__dirname, 'frontend/src'),
+        },
+    },
     server: {
         watch: {
-            ignored: ['**/storage/framework/views/**'],
+            ignored: ['**/backend/storage/framework/views/**'],
         },
     },
 });
