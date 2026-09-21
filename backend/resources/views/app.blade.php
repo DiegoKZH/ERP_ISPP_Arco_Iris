@@ -9,7 +9,7 @@
     @viteReactRefresh
 
     <!-- Assets -->
-    @vite(['frontend/src/app.jsx'])
+    @vite(['src/app.jsx'])
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
     <div id="root"></div>

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +20,15 @@ Route::prefix('auth')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
     });
+});
+
+// Users Management
+Route::middleware(['auth:sanctum', 'role:admin|superadmin'])->prefix('users')->group(function () {
+    Route::get('/', [UserController::class, 'index']);
+    Route::post('/', [UserController::class, 'store']);
+    Route::get('/{user}', [UserController::class, 'show']);
+    Route::put('/{user}', [UserController::class, 'update']);
+    Route::patch('/{user}/toggle-status', [UserController::class, 'toggleStatus']);
 });
 
 // Legacy User Endpoint
