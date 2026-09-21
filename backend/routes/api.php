@@ -23,12 +23,23 @@ Route::prefix('auth')->group(function () {
 });
 
 // Users Management
-Route::middleware(['auth:sanctum', 'role:admin|superadmin'])->prefix('users')->group(function () {
-    Route::get('/', [UserController::class, 'index']);
-    Route::post('/', [UserController::class, 'store']);
-    Route::get('/{user}', [UserController::class, 'show']);
-    Route::put('/{user}', [UserController::class, 'update']);
-    Route::patch('/{user}/toggle-status', [UserController::class, 'toggleStatus']);
+Route::middleware(['auth:sanctum'])->prefix('users')->group(function () {
+    Route::get('/', [UserController::class, 'index'])->middleware('permission:usuarios.usuarios.ver');
+    Route::post('/', [UserController::class, 'store'])->middleware('permission:usuarios.usuarios.crear');
+    Route::get('/{user}', [UserController::class, 'show'])->middleware('permission:usuarios.usuarios.ver');
+    Route::put('/{user}', [UserController::class, 'update'])->middleware('permission:usuarios.usuarios.editar');
+    
+    Route::patch('/{user}/toggle-status', [UserController::class, 'toggleStatus'])
+        ->middleware('permission:usuarios.usuarios.deshabilitar|usuarios.usuarios.reactivar');
+});
+
+// Roles Management
+Route::middleware(['auth:sanctum'])->prefix('roles')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Api\RoleController::class, 'index'])->middleware('permission:usuarios.roles.ver');
+    Route::post('/', [\App\Http\Controllers\Api\RoleController::class, 'store'])->middleware('permission:usuarios.roles.crear');
+    Route::get('/{role}', [\App\Http\Controllers\Api\RoleController::class, 'show'])->middleware('permission:usuarios.roles.ver');
+    Route::put('/{role}', [\App\Http\Controllers\Api\RoleController::class, 'update'])->middleware('permission:usuarios.roles.editar');
+    Route::delete('/{role}', [\App\Http\Controllers\Api\RoleController::class, 'destroy'])->middleware('permission:usuarios.roles.eliminar');
 });
 
 // Legacy User Endpoint

@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const ProtectedRoute = ({ requiredRole }) => {
+const ProtectedRoute = ({ requiredRole, requiredRoles }) => {
     const { isAuthenticated, hasRole, loading } = useAuth();
 
     if (loading) {
@@ -17,7 +17,15 @@ const ProtectedRoute = ({ requiredRole }) => {
         return <Navigate to="/login" replace />;
     }
 
-    if (requiredRole && !hasRole(requiredRole)) {
+    const hasRequiredRole = () => {
+        if (requiredRole) return hasRole(requiredRole);
+        if (requiredRoles && Array.isArray(requiredRoles)) {
+            return requiredRoles.some((role) => hasRole(role));
+        }
+        return true;
+    };
+
+    if (!hasRequiredRole()) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-100">
                 <div className="bg-white p-8 rounded-lg shadow-md text-center">

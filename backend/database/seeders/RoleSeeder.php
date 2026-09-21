@@ -25,6 +25,18 @@ class RoleSeeder extends Seeder
                 'description' => 'Gestión administrativa general del ERP.',
                 'is_system' => false,
             ],
+            [
+                'name' => 'Docente',
+                'slug' => 'docente',
+                'description' => 'Perfil para el personal docente de la institución.',
+                'is_system' => false,
+            ],
+            [
+                'name' => 'Estudiante',
+                'slug' => 'estudiante',
+                'description' => 'Perfil para los estudiantes matriculados en la institución.',
+                'is_system' => false,
+            ],
         ];
 
         foreach ($roles as $roleData) {

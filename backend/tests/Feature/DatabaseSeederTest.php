@@ -20,6 +20,8 @@ class DatabaseSeederTest extends TestCase
         // Check roles created
         $this->assertDatabaseHas('roles', ['slug' => 'superadmin', 'is_system' => true]);
         $this->assertDatabaseHas('roles', ['slug' => 'admin', 'is_system' => false]);
+        $this->assertDatabaseHas('roles', ['slug' => 'docente', 'is_system' => false]);
+        $this->assertDatabaseHas('roles', ['slug' => 'estudiante', 'is_system' => false]);
 
         // Check permissions created
         $this->assertDatabaseHas('permissions', ['slug' => 'usuarios.usuarios.ver']);

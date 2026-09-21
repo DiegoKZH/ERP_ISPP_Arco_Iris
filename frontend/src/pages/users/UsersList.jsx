@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { userService } from '../../services/userService';
+import { roleService } from '../../services/roleService';
 import { Plus, Edit2, UserX, UserCheck, LogOut } from 'lucide-react';
 import {
     Box,
@@ -55,6 +56,7 @@ const THEME_COLORS = {
 const UsersList = () => {
     const { user, hasRole, logout } = useAuth();
     const [users, setUsers] = useState([]);
+    const [availableRoles, setAvailableRoles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [showModal, setShowModal] = useState(false);
@@ -72,6 +74,7 @@ const UsersList = () => {
 
     useEffect(() => {
         loadUsers();
+        loadRoles();
     }, []);
 
     const loadUsers = async () => {
@@ -84,6 +87,16 @@ const UsersList = () => {
             setError('Error al cargar usuarios');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadRoles = async () => {
+        try {
+            const data = await roleService.getRoles();
+            // Exclude 'superadmin' from assignable roles in user creation
+            setAvailableRoles(data.filter((r) => r.slug !== 'superadmin'));
+        } catch (err) {
+            console.error('Error al cargar roles disponibles', err);
         }
     };
 
@@ -475,10 +488,11 @@ const UsersList = () => {
                                 }
                                 fullWidth
                             >
-                                <MenuItem value="admin">Administrador</MenuItem>
-                                {isSuperAdmin && (
-                                    <MenuItem value="superadmin">Super Administrador</MenuItem>
-                                )}
+                                {availableRoles.map((r) => (
+                                    <MenuItem key={r.id || r.slug} value={r.slug}>
+                                        {r.name}
+                                    </MenuItem>
+                                ))}
                             </TextField>
                         </DialogContent>
                         <DialogActions sx={{ px: 3, pb: 2.5 }}>

@@ -34,9 +34,15 @@ class PermissionSeeder extends Seeder
             ],
             [
                 'module' => 'usuarios',
-                'name' => 'Eliminar Usuarios',
-                'slug' => 'usuarios.usuarios.eliminar',
-                'description' => 'Permite deshabilitar o eliminar usuarios.',
+                'name' => 'Deshabilitar Usuarios',
+                'slug' => 'usuarios.usuarios.deshabilitar',
+                'description' => 'Permite desactivar (baja lógica) a usuarios.',
+            ],
+            [
+                'module' => 'usuarios',
+                'name' => 'Reactivar Usuarios',
+                'slug' => 'usuarios.usuarios.reactivar',
+                'description' => 'Permite reactivar a usuarios previamente deshabilitados.',
             ],
             [
                 'module' => 'usuarios',
