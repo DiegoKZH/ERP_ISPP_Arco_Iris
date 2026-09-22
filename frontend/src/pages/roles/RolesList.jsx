@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { roleService } from '../../services/roleService';
 import { Plus, Edit2, Trash2, Shield, UserCheck } from 'lucide-react';
+import { THEME_COLORS } from '../../theme/colors';
 import {
     Box,
     Container,
@@ -24,19 +25,6 @@ import {
     TextField,
     Tooltip,
 } from '@mui/material';
-
-const THEME_COLORS = {
-    primary: '#1976d2',
-    primaryHover: '#1565c0',
-    background: '#f8fafc',
-    textPrimary: '#0f172a',
-    textSecondary: '#64748b',
-    border: '#e2e8f0',
-    error: '#d32f2f',
-    errorBg: '#ffebee',
-    infoLight: '#e0f2fe',
-    infoText: '#0369a1',
-};
 
 export default function RolesList() {
     const [roles, setRoles] = useState([]);

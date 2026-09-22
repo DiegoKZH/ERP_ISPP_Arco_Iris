@@ -30,7 +30,11 @@ class CheckPermission
             ], Response::HTTP_FORBIDDEN);
         }
 
-        if (! $user->hasPermission($permission)) {
+        $permissionsList = explode('|', $permission);
+
+        $hasAnyPermission = collect($permissionsList)->contains(fn ($p) => $user->hasPermission($p));
+
+        if (! $hasAnyPermission) {
             return response()->json([
                 'message' => 'No tiene permisos para realizar esta acción.',
                 'error' => 'FORBIDDEN',

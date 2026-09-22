@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { LogIn } from 'lucide-react';
+import { THEME_COLORS } from '../../theme/colors';
 import {
     Box,
     Container,
@@ -12,22 +13,6 @@ import {
     Alert,
     CircularProgress
 } from '@mui/material';
-
-// ==========================================
-// ESTÁNDAR DE COLORES (VARIABLES DE COLOR)
-// ==========================================
-const THEME_COLORS = {
-    primary: '#1976d2',
-    primaryHover: '#1565c0',
-    secondary: '#9c27b0',
-    background: '#f4f6f8',
-    surface: '#ffffff',
-    textPrimary: '#1a202c',
-    textSecondary: '#64748b',
-    border: '#e2e8f0',
-    error: '#d32f2f',
-    errorBg: '#ffebee',
-};
 
 const Login = () => {
     const { login, isAuthenticated } = useAuth();

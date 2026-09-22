@@ -36,7 +36,7 @@ class AuthorizationMiddlewareTest extends TestCase
         $permission = Permission::create([
             'module' => 'usuarios',
             'name' => 'Crear',
-            'slug' => 'usuarios.crear',
+            'slug' => 'usuarios.usuarios.crear',
         ]);
 
         $user = User::factory()->create(['is_active' => true]);
@@ -66,7 +66,7 @@ class AuthorizationMiddlewareTest extends TestCase
         $permission = Permission::create([
             'module' => 'usuarios',
             'name' => 'Crear',
-            'slug' => 'usuarios.crear',
+            'slug' => 'usuarios.usuarios.crear',
         ]);
 
         $user = User::factory()->create(['is_active' => false]);

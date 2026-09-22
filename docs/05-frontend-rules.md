@@ -12,7 +12,11 @@
 |------------|---------|-----------|
 | React | 19.x | Biblioteca de UI |
 | Vite | 8.x | Bundler y servidor de desarrollo |
-| Tailwind CSS | 4.x | Framework de estilos |
+| MUI (Material UI) | 9.x | Sistema de componentes de UI principal |
+| Tailwind CSS | 4.x | Framework de estilos utilitarios (uso secundario) |
+| Axios | 1.x | Cliente HTTP para comunicación con API |
+| Lucide React | 1.x | Iconos |
+| React Router DOM | 7.x | Navegación SPA |
 | `@vitejs/plugin-react` | 6.x | Soporte React para Vite |
 | `laravel-vite-plugin` | 3.x | Integración con Laravel |
 
@@ -20,12 +24,28 @@
 
 ```
 frontend/
-├── .npmrc                  ← ignore-scripts=true, audit=true
 ├── jsconfig.json           ← Alias @ → src/, jsx: react-jsx
 ├── package.json            ← Dependencias y scripts
+├── vite.config.js          ← Configuración Vite
 ├── src/
-│   ├── app.jsx             ← Entry point (createRoot)
-│   └── Main.jsx            ← Componente de verificación
+│   ├── app.jsx             ← Entry point (createRoot + Router)
+│   ├── components/         ← Componentes reutilizables
+│   │   └── ProtectedRoute.jsx
+│   ├── context/            ← React Context providers
+│   │   └── AuthContext.jsx
+│   ├── layouts/            ← Layouts compartidos
+│   │   └── DashboardLayout.jsx
+│   ├── pages/              ← Páginas por módulo
+│   │   ├── auth/Login.jsx
+│   │   ├── dashboard/DashboardHome.jsx
+│   │   ├── users/UsersList.jsx
+│   │   └── roles/RolesList.jsx
+│   ├── services/           ← Comunicación con API
+│   │   ├── api.js
+│   │   ├── userService.js
+│   │   └── roleService.js
+│   └── theme/              ← Tema centralizado
+│       └── colors.js
 └── styles/
     └── app.css             ← Tailwind v4
 ```
@@ -34,8 +54,18 @@ frontend/
 
 | Archivo | Tipo | Descripción |
 |---------|------|-------------|
-| `app.jsx` | Entry point | Importa CSS, monta `<Main/>` en `#root` |
-| `Main.jsx` | Componente | Verificación de conexión con API |
+| `app.jsx` | Entry point | Monta el router, providers y rutas en `#root` |
+| `ProtectedRoute.jsx` | Componente | Guard de ruta con verificación de roles |
+| `AuthContext.jsx` | Context | Provider de autenticación (login, logout, user, hasRole) |
+| `DashboardLayout.jsx` | Layout | Layout principal con sidebar y navbar (MUI) |
+| `Login.jsx` | Página | Formulario de autenticación |
+| `DashboardHome.jsx` | Página | Vista principal del dashboard |
+| `UsersList.jsx` | Página | CRUD de usuarios |
+| `RolesList.jsx` | Página | CRUD de roles |
+| `api.js` | Servicio | Instancia Axios con interceptores (auth, error 401) |
+| `userService.js` | Servicio | Funciones CRUD para usuarios |
+| `roleService.js` | Servicio | Funciones CRUD para roles |
+| `colors.js` | Tema | Paleta de colores centralizada |
 
 ---
 
@@ -156,94 +186,131 @@ export default function ComponentName({ prop1, prop2 }) {
 
 ### 4.1 Estado actual
 
-El proyecto usa `fetch` nativo:
-
-```jsx
-fetch('/api/status')
-    .then(res => res.json())
-    .then(data => { /* usar data */ })
-    .catch(error => { /* manejar error */ });
-```
-
-### 4.2 Recomendación para servicios API
-
-Crear un servicio base en `services/api.js`:
+El proyecto usa **Axios** con una instancia centralizada en `services/api.js`:
 
 ```js
-const API_BASE = '/api';
+import axios from 'axios';
 
-export async function apiFetch(endpoint, options = {}) {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            ...options.headers,
-        },
-        ...options,
-    });
-
-    if (!response.ok) {
-        // Manejo de errores centralizado
-    }
-
-    return response.json();
-}
+const api = axios.create({
+    baseURL: import.meta.env.VITE_API_URL || '/api',
+    headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    },
+});
 ```
 
-> **Pendiente de definición**: ¿Se usará `fetch` nativo, `axios`, u otra librería? La decisión debe tomarse antes de implementar el primer módulo con formularios.
+La instancia incluye interceptores para:
+- **Request**: Adjuntar el token de autenticación desde `localStorage`.
+- **Response**: Redirigir a `/login` y limpiar el token en caso de 401.
+
+### 4.2 Servicios por módulo
+
+Cada módulo debe tener su propio archivo de servicio en `services/`:
+
+```js
+// services/userService.js
+import api from './api';
+
+export const userService = {
+    getUsers: async () => {
+        const response = await api.get('/users');
+        return response.data.data;
+    },
+    // ... más métodos
+};
+```
+
+> **Regla**: Toda llamada al API debe pasar por la instancia centralizada de `api.js`. No usar `fetch()` ni crear instancias de Axios independientes.
+
+### 4.3 Variables de entorno
+
+Las URLs de API y otras configuraciones deben usar variables de entorno de Vite:
+
+```
+VITE_API_URL=http://localhost:8000/api
+```
+
+Acceso en código: `import.meta.env.VITE_API_URL`
+
+> **Regla**: No hardcodear URLs, puertos ni hosts en el código fuente. Siempre usar `import.meta.env.VITE_*`.
 
 ---
 
 ## 5. Estilos
 
-### 5.1 Framework: Tailwind CSS v4
+### 5.1 Sistema de UI: Material UI (MUI) v9
 
-El proyecto usa Tailwind CSS v4 con la sintaxis moderna:
+El sistema de componentes principal del proyecto es **MUI**. Todos los componentes de interfaz (tablas, diálogos, botones, formularios) deben usar componentes MUI con la prop `sx` para estilos inline.
 
-```css
-@import 'tailwindcss';
+Tailwind CSS v4 está disponible como herramienta complementaria para layouts rápidos, pero **MUI tiene prioridad** para componentes de UI.
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, ...;
-}
+### 5.2 Paleta de colores centralizada
+
+Todos los colores personalizados están definidos en `frontend/src/theme/colors.js`:
+
+```js
+import { THEME_COLORS } from '@/theme/colors';
+// o
+import { THEME_COLORS } from '../../theme/colors';
 ```
 
-### 5.2 Convenciones de estilos
+> **Regla**: No definir constantes de color locales (`const THEME_COLORS = {...}`) dentro de componentes. Siempre importar desde `theme/colors.js`.
 
-- Usar **clases de Tailwind** directamente en JSX (patrón existente en `Main.jsx`).
-- Estilos globales en `frontend/styles/app.css`.
-- Personalización de tema en la directiva `@theme` de Tailwind v4.
-- Evitar CSS custom a menos que Tailwind no pueda resolver el caso.
+> **Regla**: Cuando se necesite un nuevo color, agregarlo al archivo centralizado `theme/colors.js` en lugar de hardcodearlo en el componente.
 
 ### 5.3 Responsive design
 
-Usar los breakpoints de Tailwind (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`). Mobile-first por defecto.
+- Usar los breakpoints de MUI (`theme.breakpoints.down/up('md')`, etc.).
+- El `DashboardLayout` ya implementa responsive con drawer temporal en mobile.
 
 ---
 
 ## 6. Estado global
 
-### Pendiente de definición
+### 6.1 Implementado
 
-No hay gestión de estado global implementada. Opciones a evaluar:
+- **AuthContext** (`context/AuthContext.jsx`): Provider de autenticación con `user`, `loading`, `error`, `login()`, `logout()`, `isAuthenticated`, `hasRole()`.
+- El estado de autenticación persiste vía token en `localStorage` y verificación con `/auth/me` al cargar.
 
-1. **React Context + useReducer**: Para estado simple (auth, tema, notificaciones).
-2. **Zustand / Jotai**: Para estado más complejo si es necesario.
-3. **React Query / SWR**: Para estado del servidor (cache de API).
+### 6.2 Reglas
 
-> **Recomendación**: Comenzar con React Context para autenticación. Evaluar necesidades adicionales según surjan.
+- Usar React Context para estado compartido entre componentes.
+- No duplicar estado que ya existe en un Context (e.g., no guardar `user` en estado local si ya está en `AuthContext`).
+- Estado local del componente para datos que no necesitan compartirse.
 
 ---
 
 ## 7. Navegación
 
-### Pendiente de definición
+### 7.1 Implementado
 
-No hay router instalado. Cuando se implemente:
+- **React Router DOM v7** con `BrowserRouter`.
+- Ruta catch-all de Laravel (`web.php`) configurada para soportar client-side routing.
+- `ProtectedRoute` como guard de autenticación y autorización por roles.
+- `DashboardLayout` con sidebar de navegación dinámica basada en roles.
 
-- **Librería recomendada**: `react-router-dom` (estándar de facto).
-- Las rutas deben reflejar la estructura de módulos del ERP.
-- La ruta catch-all de Laravel (`web.php`) ya está preparada para soportar client-side routing.
+### 7.2 Estructura de rutas
+
+```jsx
+<BrowserRouter>
+  <Routes>
+    <Route path="/login" element={<Login />} />
+    <Route element={<ProtectedRoute />}>
+      <Route element={<DashboardLayout />}>
+        <Route path="/" element={<DashboardHome />} />
+        <Route element={<ProtectedRoute requiredRoles={[...]} />}>
+          <Route path="/users" element={<UsersList />} />
+          <Route path="/roles" element={<RolesList />} />
+        </Route>
+      </Route>
+    </Route>
+    <Route path="*" element={<Navigate to="/" />} />
+  </Routes>
+</BrowserRouter>
+```
+
+> **Regla**: Las rutas deben reflejar la estructura de módulos del ERP y usar `ProtectedRoute` para control de acceso.
 
 ---
 
@@ -271,13 +338,17 @@ No hay router instalado. Cuando se implemente:
 
 ## 10. Permisos en UI
 
-### Pendiente de definición
+### 10.1 Implementado
 
-Cuando se implemente el sistema de roles/permisos:
+- `AuthContext` expone `hasRole(role)` para verificar roles del usuario.
+- `ProtectedRoute` acepta `requiredRoles` para restringir rutas por rol.
+- Elementos de UI se muestran/ocultan condicionalmente con `hasRole()`.
+
+### 10.2 Reglas
 
 - El backend es la autoridad en permisos. La UI los usa solo para mostrar/ocultar elementos.
 - Nunca confiar únicamente en restricciones de UI para seguridad.
-- Obtener permisos del usuario autenticado y almacenarlos en el estado global.
+- `hasRole('superadmin')` siempre retorna `true` para cualquier verificación de rol (bypass explícito en AuthContext).
 
 ---
 
@@ -306,6 +377,27 @@ import Component from '@/components/Component';
 ```
 
 Definido en `vite.config.js` y `jsconfig.json`.
+
+---
+
+## 13. Reglas de limpieza y mantenimiento
+
+### 13.1 Archivos muertos
+
+- No mantener componentes de prueba, verificación o scaffolding que ya no se usen.
+- Si un archivo deja de importarse desde cualquier otro, eliminarlo.
+
+### 13.2 Build artifacts
+
+- Los archivos generados en `public/build/` son output de Vite y no deben versionarse manualmente.
+- Ejecutar `cd frontend && npx vite build` para regenerar un build limpio.
+- No acumular versiones anteriores de assets compilados.
+
+### 13.3 Dependencias
+
+- Las dependencias JavaScript deben definirse **únicamente** en `frontend/package.json`.
+- No crear un `package.json` en la raíz del proyecto para dependencias frontend.
+- Auditar dependencias periódicamente con `npm audit`.
 
 ---
 

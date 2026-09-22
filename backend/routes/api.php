@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\UserController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Status & Health
@@ -35,21 +35,16 @@ Route::middleware(['auth:sanctum'])->prefix('users')->group(function () {
 
 // Roles Management
 Route::middleware(['auth:sanctum'])->prefix('roles')->group(function () {
-    Route::get('/', [\App\Http\Controllers\Api\RoleController::class, 'index'])->middleware('permission:usuarios.roles.ver');
-    Route::post('/', [\App\Http\Controllers\Api\RoleController::class, 'store'])->middleware('permission:usuarios.roles.crear');
-    Route::get('/{role}', [\App\Http\Controllers\Api\RoleController::class, 'show'])->middleware('permission:usuarios.roles.ver');
-    Route::put('/{role}', [\App\Http\Controllers\Api\RoleController::class, 'update'])->middleware('permission:usuarios.roles.editar');
-    Route::delete('/{role}', [\App\Http\Controllers\Api\RoleController::class, 'destroy'])->middleware('permission:usuarios.roles.eliminar');
+    Route::get('/', [RoleController::class, 'index'])->middleware('permission:usuarios.roles.ver');
+    Route::post('/', [RoleController::class, 'store'])->middleware('permission:usuarios.roles.crear');
+    Route::get('/{role}', [RoleController::class, 'show'])->middleware('permission:usuarios.roles.ver');
+    Route::put('/{role}', [RoleController::class, 'update'])->middleware('permission:usuarios.roles.editar');
+    Route::delete('/{role}', [RoleController::class, 'destroy'])->middleware('permission:usuarios.roles.eliminar');
 });
-
-// Legacy User Endpoint
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
 
 // Testing & Verification Protected Routes
 if (app()->environment('testing', 'local')) {
-    Route::middleware(['auth:sanctum', 'permission:usuarios.crear'])->get('/test-permission', function () {
+    Route::middleware(['auth:sanctum', 'permission:usuarios.usuarios.crear'])->get('/test-permission', function () {
         return response()->json(['message' => 'Permiso concedido']);
     });
 

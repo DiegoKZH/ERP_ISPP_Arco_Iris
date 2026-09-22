@@ -8,10 +8,22 @@
 
 ### Rutas existentes
 
-| Método | Ruta | Auth | Descripción |
-|--------|------|------|-------------|
-| `GET` | `/api/status` | No | Verificación de conexión (devuelve mensaje JSON) |
-| `GET` | `/api/user` | `auth:sanctum` | Retorna el usuario autenticado |
+| Método | Ruta | Auth | Middleware | Descripción |
+|--------|------|------|------------|-------------|
+| `GET` | `/api/status` | No | — | Verificación de conexión (devuelve mensaje JSON) |
+| `POST` | `/api/auth/login` | No | — | Autenticar usuario |
+| `POST` | `/api/auth/logout` | `auth:sanctum` | — | Cerrar sesión |
+| `GET` | `/api/auth/me` | `auth:sanctum` | — | Obtener usuario autenticado |
+| `GET` | `/api/users` | `auth:sanctum` | `permission:usuarios.usuarios.ver` | Listar usuarios |
+| `POST` | `/api/users` | `auth:sanctum` | `permission:usuarios.usuarios.crear` | Crear usuario |
+| `GET` | `/api/users/{user}` | `auth:sanctum` | `permission:usuarios.usuarios.ver` | Ver usuario |
+| `PUT` | `/api/users/{user}` | `auth:sanctum` | `permission:usuarios.usuarios.editar` | Actualizar usuario |
+| `PATCH` | `/api/users/{user}/toggle-status` | `auth:sanctum` | `permission:...deshabilitar\|...reactivar` | Cambiar estado |
+| `GET` | `/api/roles` | `auth:sanctum` | `permission:usuarios.roles.ver` | Listar roles |
+| `POST` | `/api/roles` | `auth:sanctum` | `permission:usuarios.roles.crear` | Crear rol |
+| `GET` | `/api/roles/{role}` | `auth:sanctum` | `permission:usuarios.roles.ver` | Ver rol |
+| `PUT` | `/api/roles/{role}` | `auth:sanctum` | `permission:usuarios.roles.editar` | Actualizar rol |
+| `DELETE` | `/api/roles/{role}` | `auth:sanctum` | `permission:usuarios.roles.eliminar` | Eliminar rol |
 
 ### Configuración existente
 
@@ -231,6 +243,61 @@ No es necesario envolver cada operación CRUD simple en una transacción.
 **Pendiente de definición**: ¿Se versionará el API (`/api/v1/...`)?
 
 Para un sistema interno (no expuesto a terceros), el versionamiento del API generalmente no es necesario en fases tempranas.
+
+---
+
+## 11. Reglas de middleware y rutas
+
+### 11.1 Imports en archivos de rutas
+
+- **Todos los controladores deben importarse con `use`** al inicio del archivo de rutas.
+- No usar FQCN inline (e.g., `\App\Http\Controllers\Api\RoleController::class`).
+- Mantener los imports ordenados alfabéticamente.
+
+```php
+// ✅ Correcto
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\UserController;
+
+// ❌ Incorrecto
+Route::get('/', [\App\Http\Controllers\Api\RoleController::class, 'index']);
+```
+
+### 11.2 Middleware de permisos con múltiples valores
+
+Cuando una ruta requiere **cualquiera de varios permisos**, se usa el separador `|` (pipe):
+
+```php
+->middleware('permission:permiso.a|permiso.b')
+```
+
+El middleware `CheckPermission` hace `explode('|')` y verifica que el usuario tenga **al menos uno** de los permisos listados. Esto aplica de la misma forma para `CheckRole`.
+
+> **Regla**: Todo middleware personalizado que acepte valores múltiples **debe** implementar `explode('|')` para su correcto funcionamiento. No asumir que el string recibido es un valor único.
+
+### 11.3 Convención de permisos
+
+Los permisos siguen la taxonomía jerárquica `<modulo>.<recurso>.<accion>`:
+
+```
+usuarios.usuarios.ver
+usuarios.usuarios.crear
+usuarios.usuarios.editar
+usuarios.usuarios.deshabilitar
+usuarios.usuarios.reactivar
+usuarios.roles.ver
+usuarios.roles.crear
+usuarios.roles.editar
+usuarios.roles.eliminar
+```
+
+> **Regla**: No abreviar ni romper la convención (e.g., `usuarios.crear` es incorrecto; debe ser `usuarios.usuarios.crear`).
+
+### 11.4 No dejar rutas legacy
+
+- No mantener endpoints duplicados o de boilerplate (e.g., `/api/user` del scaffolding de Laravel).
+- Si un endpoint es reemplazado por otro, eliminar el antiguo.
 
 ---
 

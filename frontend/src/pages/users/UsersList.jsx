@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { userService } from '../../services/userService';
 import { roleService } from '../../services/roleService';
 import { Plus, Edit2, UserX, UserCheck, LogOut } from 'lucide-react';
+import { THEME_COLORS } from '../../theme/colors';
 import {
     Box,
     Container,
@@ -28,33 +29,9 @@ import {
     Tooltip,
 } from '@mui/material';
 
-// ==========================================
-// ESTÁNDAR DE COLORES (VARIABLES DE COLOR)
-// ==========================================
-const THEME_COLORS = {
-    primary: '#1976d2',
-    primaryHover: '#1565c0',
-    secondary: '#475569',
-    secondaryHover: '#334155',
-    background: '#f8fafc',
-    surface: '#ffffff',
-    textPrimary: '#0f172a',
-    textSecondary: '#64748b',
-    border: '#e2e8f0',
-    error: '#d32f2f',
-    errorBg: '#ffebee',
-    errorLight: '#fef2f2',
-    errorText: '#991b1b',
-    success: '#2e7d32',
-    successLight: '#f0fdf4',
-    successText: '#166534',
-    info: '#0284c7',
-    infoLight: '#e0f2fe',
-    infoText: '#0369a1',
-};
 
 const UsersList = () => {
-    const { user, hasRole, logout } = useAuth();
+    const { user, hasRole} = useAuth();
     const [users, setUsers] = useState([]);
     const [availableRoles, setAvailableRoles] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -208,19 +185,6 @@ const UsersList = () => {
                                 Nuevo Usuario
                             </Button>
                         )}
-                        <Button
-                            variant="contained"
-                            onClick={logout}
-                            startIcon={<LogOut size={18} />}
-                            sx={{
-                                backgroundColor: THEME_COLORS.secondary,
-                                '&:hover': { backgroundColor: THEME_COLORS.secondaryHover },
-                                textTransform: 'none',
-                                fontWeight: 600,
-                            }}
-                        >
-                            Salir
-                        </Button>
                     </Box>
                 </Box>
 

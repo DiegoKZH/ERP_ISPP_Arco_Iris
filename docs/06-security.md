@@ -46,6 +46,14 @@
 | Definición de roles institucionales adicionales | Según necesidad de cada módulo | Registrar roles y permisos vía seeders en sus respectivos módulos |
 | Jerarquías organizacionales | Asignación por dependencia / área | Integrar con módulo de RRHH |
 
+### 2.3 Reglas de middleware
+
+- **Middleware `CheckPermission`** soporta múltiples permisos separados por `|` (pipe). Verifica que el usuario tenga **al menos uno** de los permisos listados.
+- **Middleware `CheckRole`** soporta múltiples roles separados por `|` (pipe). Verifica que el usuario tenga **al menos uno** de los roles listados.
+- Todo middleware personalizado que reciba parámetros con posibilidad de valores múltiples **debe** implementar `explode('|')` para procesarlos correctamente.
+
+> **Lección aprendida**: Un middleware que no separe los valores por `|` buscará literalmente un permiso llamado `"a|b"`, que nunca existirá. Esto rompe silenciosamente la autorización.
+
 ---
 
 ## 3. Validación de datos
@@ -100,6 +108,17 @@
 | `.gitignore` | `.env`, vendor, storage keys excluidos del repositorio |
 | npm audit | `audit=true` en `.npmrc` |
 | ignore-scripts | `ignore-scripts=true` en `.npmrc` (previene ejecución de scripts maliciosos) |
+
+### 5.3 Variables de entorno
+
+- Las URLs de API y configuraciones sensibles deben usar variables de entorno (`VITE_*` para frontend, `.env` para backend).
+- No hardcodear URLs, hosts ni puertos en el código fuente.
+- El archivo `.env.example` debe documentar todas las variables requeridas con valores de ejemplo.
+
+```env
+# Frontend
+VITE_API_URL=http://localhost:8000/api
+```
 
 ### 5.2 Recomendado (no implementado)
 
