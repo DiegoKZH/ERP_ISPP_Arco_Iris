@@ -13,7 +13,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'username', 'password', 'is_active', 'last_login_at'])]
+#[Fillable(['name', 'email', 'username', 'password', 'is_active', 'last_login_at', 'persona_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -33,5 +33,13 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Persona civil vinculada a este usuario (opcional).
+     */
+    public function persona()
+    {
+        return $this->belongsTo(Persona::class, 'persona_id');
     }
 }

@@ -21,7 +21,7 @@ import {
     useMediaQuery,
     useTheme,
 } from '@mui/material';
-import { Menu as MenuIcon, LayoutDashboard, Users, GraduationCap, LogOut, User } from 'lucide-react';
+import { Menu as MenuIcon, LayoutDashboard, Users, GraduationCap, LogOut, User, Award } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const DRAWER_WIDTH = 260;
@@ -71,6 +71,12 @@ export default function DashboardLayout() {
             text: 'Gestión de Roles',
             icon: <User size={20} />,
             path: '/roles',
+            show: hasRole('superadmin') || hasRole('admin'),
+        },
+        {
+            text: 'Módulo de Admisión',
+            icon: <Award size={20} />,
+            path: '/admission',
             show: hasRole('superadmin') || hasRole('admin'),
         },
     ];

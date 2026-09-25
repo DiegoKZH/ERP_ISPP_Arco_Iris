@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\AdmisionPostulacionController;
+use App\Http\Controllers\Api\AdmisionProcesoController;
+use App\Http\Controllers\Api\AdmisionResultadoController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\UserController;
@@ -40,6 +43,29 @@ Route::middleware(['auth:sanctum'])->prefix('roles')->group(function () {
     Route::get('/{role}', [RoleController::class, 'show'])->middleware('permission:usuarios.roles.ver');
     Route::put('/{role}', [RoleController::class, 'update'])->middleware('permission:usuarios.roles.editar');
     Route::delete('/{role}', [RoleController::class, 'destroy'])->middleware('permission:usuarios.roles.eliminar');
+});
+
+// Admission Management (Módulo 08)
+Route::middleware(['auth:sanctum'])->prefix('admision')->group(function () {
+    // Procesos
+    Route::get('/procesos', [AdmisionProcesoController::class, 'index'])->middleware('permission:admision.procesos.ver');
+    Route::get('/procesos/{proceso}', [AdmisionProcesoController::class, 'show'])->middleware('permission:admision.procesos.ver');
+
+    // Postulaciones y Flujo Oficial de Admisión
+    Route::get('/postulaciones', [AdmisionPostulacionController::class, 'index'])->middleware('permission:admision.postulantes.ver');
+    Route::post('/postulaciones', [AdmisionPostulacionController::class, 'store'])->middleware('permission:admision.postulantes.inscribir');
+    Route::post('/postulaciones/pre-inscribir', [AdmisionPostulacionController::class, 'preInscribir'])->middleware('permission:admision.postulantes.inscribir');
+    Route::get('/postulaciones/{postulacion}', [AdmisionPostulacionController::class, 'show'])->middleware('permission:admision.postulantes.ver');
+    Route::post('/postulaciones/{postulacion}/validar-pago', [AdmisionPostulacionController::class, 'validarPago'])->middleware('permission:admision.postulantes.inscribir');
+    Route::post('/postulaciones/{postulacion}/completar-expediente', [AdmisionPostulacionController::class, 'completarExpediente'])->middleware('permission:admision.postulantes.inscribir');
+    Route::get('/postulaciones/{postulacion}/fut-documento', [AdmisionPostulacionController::class, 'futDocumento'])->middleware('permission:admision.postulantes.ver');
+    Route::get('/postulaciones/{postulacion}/declaracion-jurada', [AdmisionPostulacionController::class, 'declaracionJurada'])->middleware('permission:admision.postulantes.ver');
+
+    // Calificaciones y Cuadro de Mérito
+    Route::get('/procesos/{proceso}/cuadro-merito', [AdmisionResultadoController::class, 'cuadroMerito'])->middleware('permission:admision.resultados.ver');
+    Route::post('/postulaciones/{postulacion}/calificar', [AdmisionResultadoController::class, 'calificar'])->middleware('permission:admision.postulantes.evaluar');
+    Route::post('/postulaciones/{postulacion}/emitir-constancia', [AdmisionResultadoController::class, 'emitirConstancia'])->middleware('permission:admision.constancias.emitir');
+    Route::post('/postulaciones/{postulacion}/ratificar-matricula', [AdmisionResultadoController::class, 'ratificarMatricula'])->middleware('permission:admision.constancias.emitir');
 });
 
 // Testing & Verification Protected Routes

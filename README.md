@@ -110,10 +110,12 @@ Tests configurados con PHPUnit 12 usando SQLite en memoria.
 
 | Documento | Descripción |
 |-----------|-------------|
+| [📘 Guía Rápida de Desarrollo](docs/GUIA-DESARROLLO-RAPIDO.md) | **¡Empieza aquí!** Manual didáctico en 10 min para nuevos desarrolladores |
 | [AGENTS.md](AGENTS.md) | Punto de entrada para agentes de IA |
 | [Constitución](docs/00-constitution.md) | Principios fundamentales del proyecto |
 | [Contexto](docs/01-project-context.md) | Propósito, alcance y tecnologías |
 | [Arquitectura](docs/02-architecture.md) | Arquitectura real del sistema |
+| [Auditoría de BD](docs/09-database-audit-actual.md) | Estructura detallada de la base de datos |
 | [Modelo de dominio](docs/03-domain-model.md) | Entidades y relaciones conceptuales |
 | [Reglas API](docs/04-api-rules.md) | Convenciones del API REST |
 | [Reglas Frontend](docs/05-frontend-rules.md) | Convenciones del frontend React |
