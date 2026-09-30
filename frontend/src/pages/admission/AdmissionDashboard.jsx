@@ -252,7 +252,7 @@ export default function AdmissionDashboard() {
                     </Box>
                     <Box>
                         <Typography variant="h5" sx={{ fontWeight: 700, color: THEME_COLORS.textPrimary }}>
-                            Módulo de Admisión (IESP Público)
+                            Módulo de Admisión (IESPP ARCO IRIS)
                         </Typography>
                         <Typography variant="body2" sx={{ color: THEME_COLORS.textSecondary }}>
                             Flujo oficial: Pre-inscripción, Código Tesorería (DNI), Retorno de Pago, FUT, Declaración Jurada y Evaluaciones.

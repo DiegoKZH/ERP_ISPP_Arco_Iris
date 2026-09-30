@@ -95,17 +95,25 @@ class AdmisionSeeder extends Seeder
             ]
         );
 
-        // 4. Programas Ofertados con Vacantes
+        // 4. Programas Ofertados con Vacantes (SE CONSIDERA ED INICIAL Y ED FISICA)
         $progInicial = ProgramaEstudio::where('codigo', 'EI-01')->first();
-        $progPrimaria = ProgramaEstudio::where('codigo', 'EP-01')->first();
-        $progCom = ProgramaEstudio::where('codigo', 'ES-COM')->first();
+        /*$progPrimaria = ProgramaEstudio::where('codigo', 'EP-01')->first();
+        $progCom = ProgramaEstudio::where('codigo', 'ES-COM')->first();*/
 
+        // AGREGAMOS EDUCACIÓN FISICA
+        $progFisica = ProgramaEstudio::where('codigo', 'EF-01')->first();
+        
         $ofertaInicial = AdmisionProgramaOfertado::firstOrCreate(
             ['admision_proceso_id' => $proceso->id, 'programa_estudio_id' => $progInicial->id, 'admision_modalidad_id' => $modalidadOrd->id],
             ['vacantes' => 30]
         );
 
-        $ofertaPrimaria = AdmisionProgramaOfertado::firstOrCreate(
+        $ofertaFisica = AdmisionProgramaOfertado::firstOrCreate(
+            ['admision_proceso_id' => $proceso->id, 'programa_estudio_id' => $progFisica->id, 'admision_modalidad_id' => $modalidadOrd->id],
+            ['vacantes' => 30]
+        );
+
+        /*$ofertaPrimaria = AdmisionProgramaOfertado::firstOrCreate(
             ['admision_proceso_id' => $proceso->id, 'programa_estudio_id' => $progPrimaria->id, 'admision_modalidad_id' => $modalidadOrd->id],
             ['vacantes' => 30]
         );
@@ -113,7 +121,7 @@ class AdmisionSeeder extends Seeder
         $ofertaCom = AdmisionProgramaOfertado::firstOrCreate(
             ['admision_proceso_id' => $proceso->id, 'programa_estudio_id' => $progCom->id, 'admision_modalidad_id' => $modalidadOrd->id],
             ['vacantes' => 25]
-        );
+        );*/
 
         // 5. Ambientes
         $aula101 = AdmisionAmbiente::firstOrCreate(
@@ -157,7 +165,7 @@ class AdmisionSeeder extends Seeder
                     'email_personal' => 'alexander.quispe@gmail.com',
                 ],
                 'codigo_postulante' => 'POST-20261-0001',
-                'oferta' => $ofertaPrimaria,
+                'oferta' => $ofertaFisica,
                 'notas' => [17.50, 16.00, 18.00], // Final = 17.30
                 'condicion' => 'INGRESANTE',
                 'asiento' => 1,
@@ -195,7 +203,7 @@ class AdmisionSeeder extends Seeder
                     'email_personal' => 'carlos.benites@gmail.com',
                 ],
                 'codigo_postulante' => 'POST-20261-0003',
-                'oferta' => $ofertaPrimaria,
+                'oferta' => $ofertaFisica,
                 'notas' => [09.50, 10.00, 11.00], // Final = 9.90 (desaprobado)
                 'condicion' => 'NO_INGRESANTE',
                 'asiento' => 3,
@@ -214,7 +222,7 @@ class AdmisionSeeder extends Seeder
                     'email_personal' => 'diana.huaman@outlook.com',
                 ],
                 'codigo_postulante' => 'POST-20261-0004',
-                'oferta' => $ofertaCom,
+                'oferta' => $ofertaInicial,
                 'notas' => [15.00, 14.50, 16.00], // Final = 15.10
                 'condicion' => 'INGRESANTE',
                 'asiento' => 4,

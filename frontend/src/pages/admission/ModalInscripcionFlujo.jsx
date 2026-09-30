@@ -250,12 +250,12 @@ export default function ModalInscripcionFlujo({
                 {activeStep === 0 && (
                     <form id="form-paso-1" onSubmit={handlePreInscribir}>
                         <Typography variant="subtitle2" sx={{ color: THEME_COLORS.primary, fontWeight: 700, mb: 1.5 }}>
-                            1. Elección del Programa y Modalidad de Admisión
+                            1. Elija su Programa de estudios y Modalidad de Admisión
                         </Typography>
 
                         <TextField
                             select
-                            label="Programa de Estudios Ofertado *"
+                            label="Programa de Estudios"
                             name="admision_programa_ofertado_id"
                             value={formPaso1.admision_programa_ofertado_id}
                             onChange={handlePaso1Change}
@@ -274,14 +274,24 @@ export default function ModalInscripcionFlujo({
                         </TextField>
 
                         <Typography variant="subtitle2" sx={{ color: THEME_COLORS.primary, fontWeight: 700, mb: 1.5 }}>
-                            2. Identidad Civil (DNI se registrará como Código de Tesorería)
+                            2. Registrar datos (su DNI será registrado como Código de Tesorería)
                         </Typography>
 
-                        <Grid container spacing={2}>
-                            <Grid item xs={12} sm={4}>
+                        <Box
+                            sx={{
+                                display: "grid",
+                                gridTemplateColumns: {
+                                    xs: "1fr",
+                                    sm: "repeat(12, minmax(0, 1fr))",
+                                },
+                                gap: 2,
+                            }}
+                        >
+                            {/* Identificación */}
+                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 4" } }}>
                                 <TextField
                                     select
-                                    label="Tipo Documento"
+                                    label="Tipo de documento"
                                     name="tipo_documento"
                                     value={formPaso1.tipo_documento}
                                     onChange={handlePaso1Change}
@@ -289,69 +299,67 @@ export default function ModalInscripcionFlujo({
                                     size="small"
                                 >
                                     <MenuItem value="DNI">DNI</MenuItem>
-                                    <MenuItem value="CE">Carnet de Extranjería</MenuItem>
+                                    <MenuItem value="CE">Carnet de extranjería</MenuItem>
                                     <MenuItem value="PASAPORTE">Pasaporte</MenuItem>
                                 </TextField>
-                            </Grid>
+                            </Box>
 
-                            <Grid item xs={12} sm={8}>
+                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 8" } }}>
                                 <TextField
-                                    label="Número de Documento (DNI) *"
+                                    label="Número de documento"
                                     name="numero_documento"
                                     value={formPaso1.numero_documento}
                                     onChange={handlePaso1Change}
                                     required
                                     fullWidth
                                     size="small"
-                                    placeholder="8 dígitos (será el código para pagar en Tesorería)"
+                                    placeholder="8 dígitos si es DNI"
                                     error={Boolean(errors.numero_documento)}
                                     helperText={errors.numero_documento?.[0]}
                                 />
-                            </Grid>
+                            </Box>
 
-                            <Grid item xs={12} sm={4}>
-                                <TextField
-                                    label="Nombres *"
-                                    name="nombres"
-                                    value={formPaso1.nombres}
-                                    onChange={handlePaso1Change}
-                                    required
-                                    fullWidth
-                                    size="small"
-                                    error={Boolean(errors.nombres)}
-                                    helperText={errors.nombres?.[0]}
-                                />
-                            </Grid>
+                            {/* Nombres y apellidos */}
+                            {[
+                                {
+                                    label: "Nombres",
+                                    name: "nombres",
+                                    required: true,
+                                    error: errors.nombres,
+                                },
+                                {
+                                    label: "Apellido paterno",
+                                    name: "apellido_paterno",
+                                    required: true,
+                                    error: errors.apellido_paterno,
+                                },
+                                {
+                                    label: "Apellido materno",
+                                    name: "apellido_materno",
+                                    required: true,
+                                    error: errors.apellido_materno,
+                                },
+                            ].map((field) => (
+                                <Box
+                                    key={field.name}
+                                    sx={{ gridColumn: { xs: "span 1", sm: "span 4" } }}
+                                >
+                                    <TextField
+                                        label={field.label}
+                                        name={field.name}
+                                        value={formPaso1[field.name]}
+                                        onChange={handlePaso1Change}
+                                        required={field.required}
+                                        fullWidth
+                                        size="small"
+                                        error={Boolean(field.error)}
+                                        helperText={field.error?.[0]}
+                                    />
+                                </Box>
+                            ))}
 
-                            <Grid item xs={12} sm={4}>
-                                <TextField
-                                    label="Apellido Paterno *"
-                                    name="apellido_paterno"
-                                    value={formPaso1.apellido_paterno}
-                                    onChange={handlePaso1Change}
-                                    required
-                                    fullWidth
-                                    size="small"
-                                    error={Boolean(errors.apellido_paterno)}
-                                    helperText={errors.apellido_paterno?.[0]}
-                                />
-                            </Grid>
-
-                            <Grid item xs={12} sm={4}>
-                                <TextField
-                                    label="Apellido Materno *"
-                                    name="apellido_materno"
-                                    value={formPaso1.apellido_materno}
-                                    onChange={handlePaso1Change}
-                                    required
-                                    fullWidth
-                                    size="small"
-                                    error={Boolean(errors.apellido_materno)}
-                                    helperText={errors.apellido_materno?.[0]}
-                                />
-                            </Grid>
-
-                            <Grid item xs={12} sm={4}>
+                            {/* Datos personales */}
+                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 4" } }}>
                                 <TextField
                                     select
                                     label="Sexo"
@@ -364,12 +372,12 @@ export default function ModalInscripcionFlujo({
                                     <MenuItem value="M">Masculino</MenuItem>
                                     <MenuItem value="F">Femenino</MenuItem>
                                 </TextField>
-                            </Grid>
+                            </Box>
 
-                            <Grid item xs={12} sm={4}>
+                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 4" } }}>
                                 <TextField
                                     type="date"
-                                    label="Fecha de Nacimiento"
+                                    label="Fecha de nacimiento"
                                     name="fecha_nacimiento"
                                     value={formPaso1.fecha_nacimiento}
                                     onChange={handlePaso1Change}
@@ -377,9 +385,9 @@ export default function ModalInscripcionFlujo({
                                     size="small"
                                     InputLabelProps={{ shrink: true }}
                                 />
-                            </Grid>
+                            </Box>
 
-                            <Grid item xs={12} sm={4}>
+                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 4" } }}>
                                 <TextField
                                     label="Celular"
                                     name="celular"
@@ -389,11 +397,12 @@ export default function ModalInscripcionFlujo({
                                     size="small"
                                     placeholder="Ej. 984512301"
                                 />
-                            </Grid>
+                            </Box>
 
-                            <Grid item xs={12} sm={6}>
+                            {/* Contacto */}
+                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 6" } }}>
                                 <TextField
-                                    label="Correo Electrónico Personal"
+                                    label="Correo electrónico personal"
                                     name="email_personal"
                                     value={formPaso1.email_personal}
                                     onChange={handlePaso1Change}
@@ -401,20 +410,20 @@ export default function ModalInscripcionFlujo({
                                     size="small"
                                     placeholder="ejemplo@gmail.com"
                                 />
-                            </Grid>
+                            </Box>
 
-                            <Grid item xs={12} sm={6}>
+                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 6" } }}>
                                 <TextField
-                                    label="Dirección / Domicilio Real"
+                                    label="Dirección / domicilio real"
                                     name="direccion"
                                     value={formPaso1.direccion}
                                     onChange={handlePaso1Change}
                                     fullWidth
                                     size="small"
-                                    placeholder="Av. o Jr., Distrito"
+                                    placeholder="Av. o Jr., distrito"
                                 />
-                            </Grid>
-                        </Grid>
+                            </Box>
+                        </Box>
                     </form>
                 )}
 

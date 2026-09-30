@@ -21,7 +21,9 @@ export default defineConfig({
             '@': path.resolve(import.meta.dirname, 'src'),
         },
     },
+    envDir: '../',
     server: {
+        host: '127.0.0.1',
         watch: {
             ignored: ['**/backend/storage/framework/views/**'],
         },

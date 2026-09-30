@@ -93,7 +93,7 @@ export default function DashboardHome() {
                             ¡Bienvenido(a), {user?.name}!
                         </Typography>
                         <Typography variant="body1" sx={{ opacity: 0.9, mt: 0.5 }}>
-                            Panel institucional del ERP de la Escuela Superior Pedagógica Arco Iris.
+                            Panel institucional del IESPP Arco Iris.
                         </Typography>
                     </Grid>
                 </Grid>

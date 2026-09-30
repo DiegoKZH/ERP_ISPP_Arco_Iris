@@ -4,7 +4,8 @@
         "paths": {
             "@/*": ["src/*"]
         },
-        "jsx": "react-jsx"
+        "jsx": "react-jsx",
+        "ignoreDeprecations": "6.0" // se agrego para eviatr el error de la baseUrl
     },
     "include": ["src/**/*"],
     "exclude": ["node_modules"]

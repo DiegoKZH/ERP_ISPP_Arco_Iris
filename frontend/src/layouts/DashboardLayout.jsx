@@ -85,9 +85,14 @@ export default function DashboardLayout() {
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Toolbar sx={{ px: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <GraduationCap size={28} color="#1976d2" />
-                <Typography variant="h6" fontWeight="bold" color="primary" noWrap>
-                    ERP Instituto
-                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                    <Typography variant="h6" fontWeight="bold" color="primary" noWrap>
+                        ERP NSTITUTO
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold" color="primary" noWrap>
+                        ARCO IRIS
+                    </Typography>
+                </Box>
             </Toolbar>
             <Divider />
             
