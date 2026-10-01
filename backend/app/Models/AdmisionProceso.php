@@ -60,5 +60,27 @@ class AdmisionProceso extends Model
     {
         return $this->hasMany(AdmisionEvaluacion::class, 'admision_proceso_id')->orderBy('orden');
     }
+
+    public const ESTADO_ABIERTA = 'CONVOCATORIA_ABIERTA';
+    public const ESTADO_CERRADA = 'CONVOCATORIA_CERRADA';
+
+    public function isAbierta(): bool
+    {
+        return in_array(strtoupper($this->estado), [
+            self::ESTADO_ABIERTA,
+            'ABIERTA',
+            'EN_CURSO',
+            'PLANIFICADO'
+        ]);
+    }
+
+    public function isCerrada(): bool
+    {
+        return in_array(strtoupper($this->estado), [
+            self::ESTADO_CERRADA,
+            'CERRADA',
+            'FINALIZADO'
+        ]);
+    }
 }
 

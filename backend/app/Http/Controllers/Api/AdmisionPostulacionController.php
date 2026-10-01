@@ -76,12 +76,19 @@ class AdmisionPostulacionController extends Controller
     {
         $validated = $request->validated();
 
-        $postulacion = DB::transaction(function () use ($validated) {
-            // 1. Crear o actualizar entidad Persona
+        $proceso = AdmisionProceso::findOrFail($validated['admision_proceso_id']);
+        if ($proceso->isCerrada()) {
+            return response()->json([
+                'message' => 'La convocatoria de admisión se encuentra CERRADA. No se aceptan nuevas solicitudes de inscripción.',
+            ], 422);
+        }
+
+        $postulacion = DB::transaction(function () use ($validated, $proceso) {
+            // 1. Crear o actualizar entidad Persona con datos básicos de identidad
             $persona = Persona::updateOrCreate(
                 ['numero_documento' => $validated['numero_documento']],
                 [
-                    'tipo_documento' => $validated['tipo_documento'],
+                    'tipo_documento' => $validated['tipo_documento'] ?? 'DNI',
                     'nombres' => $validated['nombres'],
                     'apellido_paterno' => $validated['apellido_paterno'],
                     'apellido_materno' => $validated['apellido_materno'],
@@ -165,27 +172,51 @@ class AdmisionPostulacionController extends Controller
 
     /**
      * Paso 4: Completar datos escolares (colegio y código modular) y verificar expediente documentario.
+     * Paso 4: Completar datos personales y expediente escolar tras validación de FUT en Tesorería.
      */
     public function completarExpediente(CompletarExpedienteRequest $request, AdmisionPostulacion $postulacion): JsonResponse
     {
         $validated = $request->validated();
 
-        $postulacion->fill([
-            'colegio_fin_secundaria' => $validated['colegio_fin_secundaria'],
-            'codigo_modular_colegio' => $validated['codigo_modular_colegio'],
-            'anio_egreso_colegio' => $validated['anio_egreso_colegio'],
-            'colegio_tipo_gestion' => $validated['colegio_tipo_gestion'] ?? 'PUBLICA',
-            'colegio_departamento' => $validated['colegio_departamento'] ?? null,
-            'colegio_provincia' => $validated['colegio_provincia'] ?? null,
-            'colegio_distrito' => $validated['colegio_distrito'] ?? null,
-            'foto_url' => $validated['foto_url'] ?? null,
-            'tiene_copia_dni_color' => $validated['tiene_copia_dni_color'],
-            'tiene_partida_nacimiento' => $validated['tiene_partida_nacimiento'],
-            'tiene_certificado_nacimiento_original' => $validated['tiene_certificado_nacimiento_original'],
-            'estado_inscripcion' => 'INSCRITO',
-        ]);
+        // REGLA: Debe tener pago validado y FUT habilitado
+        if (!$postulacion->numero_fut || $postulacion->estado_pago !== 'PAGADO') {
+            return response()->json([
+                'message' => 'Debe validar el pago en Tesorería y contar con un Código FUT habilitado para completar sus datos personales y expediente.',
+            ], 422);
+        }
 
-        $postulacion->save();
+        DB::transaction(function () use ($postulacion, $validated) {
+            // Actualizar datos personales complementarios en Persona
+            $persona = $postulacion->persona;
+            if ($persona) {
+                $personaFields = [
+                    'fecha_nacimiento' => $validated['fecha_nacimiento'] ?? $persona->fecha_nacimiento,
+                    'sexo' => $validated['sexo'] ?? $persona->sexo,
+                    'celular' => $validated['celular'] ?? $persona->celular,
+                    'email_personal' => $validated['email_personal'] ?? $persona->email_personal,
+                    'direccion' => $validated['direccion'] ?? $persona->direccion,
+                ];
+                $persona->update(array_filter($personaFields, fn($v) => !is_null($v)));
+            }
+
+            // Actualizar datos del expediente escolar y requisitos en AdmisionPostulacion
+            $postulacion->fill([
+                'colegio_fin_secundaria' => $validated['colegio_fin_secundaria'],
+                'codigo_modular_colegio' => $validated['codigo_modular_colegio'],
+                'anio_egreso_colegio' => $validated['anio_egreso_colegio'],
+                'colegio_tipo_gestion' => $validated['colegio_tipo_gestion'] ?? 'PUBLICA',
+                'colegio_departamento' => $validated['colegio_departamento'] ?? null,
+                'colegio_provincia' => $validated['colegio_provincia'] ?? null,
+                'colegio_distrito' => $validated['colegio_distrito'] ?? null,
+                'foto_url' => $validated['foto_url'] ?? null,
+                'tiene_copia_dni_color' => $validated['tiene_copia_dni_color'],
+                'tiene_partida_nacimiento' => $validated['tiene_partida_nacimiento'],
+                'tiene_certificado_nacimiento_original' => $validated['tiene_certificado_nacimiento_original'],
+                'estado_inscripcion' => 'INSCRITO',
+            ]);
+
+            $postulacion->save();
+        });
 
         $postulacion->load([
             'persona',

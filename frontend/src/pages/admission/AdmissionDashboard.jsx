@@ -3,6 +3,7 @@ import { admissionService } from '../../services/admissionService';
 import { THEME_COLORS } from '../../theme/colors';
 import ModalInscripcionFlujo from './ModalInscripcionFlujo';
 import DocumentViewerModal from './DocumentViewerModal';
+import ModalCrearConvocatoria from './ModalCrearConvocatoria';
 import {
     Award,
     Users,
@@ -20,6 +21,8 @@ import {
     CreditCard,
     Check,
     X,
+    Lock,
+    Unlock,
 } from 'lucide-react';
 import {
     Box,
@@ -89,8 +92,16 @@ export default function AdmissionDashboard() {
     });
     const [pagoLoading, setPagoLoading] = useState(false);
 
+    // Modal Crear Convocatoria
+    const [showCrearConvocatoriaModal, setShowCrearConvocatoriaModal] = useState(false);
+    const [toggleLoading, setToggleLoading] = useState(false);
+
     // Alerts
     const [feedback, setFeedback] = useState(null);
+
+    // Estado de la convocatoria seleccionada
+    const estadoUpper = (procesoDetalle?.estado || '').toUpperCase();
+    const isConvocatoriaCerrada = estadoUpper.includes('CERRAD') || estadoUpper === 'FINALIZADO';
 
     useEffect(() => {
         loadProcesos();
@@ -225,6 +236,32 @@ export default function AdmissionDashboard() {
         }
     };
 
+    const handleToggleConvocatoria = async () => {
+        if (!selectedProcesoId) return;
+        setToggleLoading(true);
+        try {
+            const res = await admissionService.toggleEstadoProceso(selectedProcesoId);
+            setFeedback({ type: 'success', message: res.message });
+            loadProcesos();
+            loadProcesoDetalle(selectedProcesoId);
+        } catch (err) {
+            setFeedback({ type: 'error', message: err.response?.data?.message || 'Error al alternar estado de la convocatoria.' });
+        } finally {
+            setToggleLoading(false);
+        }
+    };
+
+    const handleConvocatoriaCreada = (nueva) => {
+        setFeedback({
+            type: 'success',
+            message: `Convocatoria ${nueva.codigo} creada con éxito. Se configuraron los programas Educación Inicial y Educación Física.`,
+        });
+        loadProcesos();
+        if (nueva.id) {
+            setSelectedProcesoId(nueva.id);
+        }
+    };
+
     return (
         <Container maxWidth="xl" sx={{ mt: 3, mb: 4 }}>
             {/* Header */}
@@ -239,17 +276,6 @@ export default function AdmissionDashboard() {
                 }}
             >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Box
-                        sx={{
-                            backgroundColor: THEME_COLORS.primaryLight,
-                            color: THEME_COLORS.primary,
-                            p: 1.2,
-                            borderRadius: 2,
-                            display: 'flex',
-                        }}
-                    >
-                        <Award size={28} />
-                    </Box>
                     <Box>
                         <Typography variant="h5" sx={{ fontWeight: 700, color: THEME_COLORS.textPrimary }}>
                             Módulo de Admisión (IESPP ARCO IRIS)
@@ -260,15 +286,15 @@ export default function AdmissionDashboard() {
                     </Box>
                 </Box>
 
-                {/* Selector de Proceso y Botón Inscribir */}
-                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                {/* Selector de Proceso, Control de Estado y Acciones */}
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
                     <TextField
                         select
                         size="small"
-                        label="Convocatoria Activa"
+                        label="Convocatoria Seleccionada"
                         value={selectedProcesoId}
                         onChange={(e) => setSelectedProcesoId(e.target.value)}
-                        sx={{ minWidth: 280 }}
+                        sx={{ minWidth: 260 }}
                     >
                         {procesos.map((p) => (
                             <MenuItem key={p.id} value={p.id}>
@@ -277,24 +303,78 @@ export default function AdmissionDashboard() {
                         ))}
                     </TextField>
 
+                    {/* Chip de Estado Abierta / Cerrada */}
+                    {procesoDetalle && (
+                        <Chip
+                            icon={isConvocatoriaCerrada ? <Lock size={14} /> : <CheckCircle2 size={14} />}
+                            label={isConvocatoriaCerrada ? 'Convocatoria Cerrada' : 'Convocatoria Abierta'}
+                            color={isConvocatoriaCerrada ? 'error' : 'success'}
+                            size="small"
+                            sx={{ fontWeight: 700 }}
+                        />
+                    )}
+
+                    {/* Botón Abrir / Cerrar Convocatoria */}
+                    {procesoDetalle && (
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            color={isConvocatoriaCerrada ? 'success' : 'warning'}
+                            onClick={handleToggleConvocatoria}
+                            disabled={toggleLoading}
+                            startIcon={isConvocatoriaCerrada ? <Unlock size={14} /> : <Lock size={14} />}
+                            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
+                        >
+                            {isConvocatoriaCerrada ? 'Abrir Convocatoria' : 'Cerrar Convocatoria'}
+                        </Button>
+                    )}
+
+                    {/* Botón Crear Convocatoria */}
                     <Button
-                        variant="contained"
-                        startIcon={<Plus size={18} />}
-                        onClick={() => setShowWizardModal(true)}
-                        sx={{
-                            backgroundColor: THEME_COLORS.primary,
-                            '&:hover': { backgroundColor: THEME_COLORS.primaryHover },
-                            textTransform: 'none',
-                            fontWeight: 700,
-                            px: 2.5,
-                            borderRadius: 2,
-                            boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)',
-                        }}
+                        variant="outlined"
+                        size="small"
+                        startIcon={<Calendar size={16} />}
+                        onClick={() => setShowCrearConvocatoriaModal(true)}
+                        sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
                     >
-                        Inscribir Postulante (Flujo Oficial)
+                        Nueva Convocatoria
                     </Button>
+
+                    {/* Botón Inscribir Postulante / Nueva Solicitud */}
+                    <Tooltip title={isConvocatoriaCerrada ? 'No se pueden registrar postulantes en una convocatoria cerrada' : ''}>
+                        <span>
+                            <Button
+                                variant="contained"
+                                startIcon={<Plus size={18} />}
+                                disabled={isConvocatoriaCerrada}
+                                onClick={() => setShowWizardModal(true)}
+                                sx={{
+                                    backgroundColor: THEME_COLORS.primary,
+                                    '&:hover': { backgroundColor: THEME_COLORS.primaryHover },
+                                    textTransform: 'none',
+                                    fontWeight: 700,
+                                    px: 2.5,
+                                    borderRadius: 2,
+                                    boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)',
+                                }}
+                            >
+                                Nueva Solicitud de Admisión
+                            </Button>
+                        </span>
+                    </Tooltip>
                 </Box>
             </Box>
+
+            {/* Banner de Convocatoria Cerrada */}
+            {isConvocatoriaCerrada && (
+                <Alert
+                    severity="warning"
+                    icon={<Lock size={20} />}
+                    sx={{ mb: 3, borderRadius: 2, fontWeight: 600 }}
+                >
+                    Esta convocatoria se encuentra actualmente <strong>CERRADA</strong>. Se ha pausado la recepción de nuevas solicitudes de admisión.
+                </Alert>
+            )}
 
             {/* Feedback Alert */}
             {feedback && (
@@ -861,6 +941,13 @@ export default function AdmissionDashboard() {
                     </DialogActions>
                 </form>
             </Dialog>
+
+            {/* Modal para Crear Convocatoria */}
+            <ModalCrearConvocatoria
+                open={showCrearConvocatoriaModal}
+                onClose={() => setShowCrearConvocatoriaModal(false)}
+                onSuccess={handleConvocatoriaCreada}
+            />
         </Container>
     );
 }

@@ -35,16 +35,20 @@ import {
     ChevronRight,
     ChevronLeft,
     ShieldCheck,
+    Lock,
 } from 'lucide-react';
 import { admissionService } from '../../services/admissionService';
 import { THEME_COLORS } from '../../theme/colors';
 
 const STEPS = [
     'Datos Personales',
+    'Solicitud Inicial',
     'Código Tesorería (DNI)',
     'Validación Pago & FUT',
     'Expediente Escolar',
     'Formatos Oficiales PDF',
+    'Ficha Integral & Expediente',
+    'Formatos Oficiales A4',
     'Registro Concluido',
 ];
 
@@ -64,7 +68,7 @@ export default function ModalInscripcionFlujo({
     // Postulacion state persisted across steps
     const [postulacionCreada, setPostulacionCreada] = useState(null);
 
-    // Formulario Paso 1: Datos Iniciales
+    // Formulario Paso 1: Solicitud Inicial (SOLO DNI, Nombres y Apellidos)
     const [formPaso1, setFormPaso1] = useState({
         admision_proceso_id: procesoId || '',
         admision_programa_ofertado_id: '',
@@ -88,8 +92,15 @@ export default function ModalInscripcionFlujo({
         fecha_pago: new Date().toISOString().split('T')[0],
     });
 
-    // Formulario Paso 4: Expediente Escolar
+    // Formulario Paso 4: Ficha Integral de Datos Personales y Expediente Escolar
     const [formPaso4, setFormPaso4] = useState({
+        // Datos personales complementarios
+        sexo: 'M',
+        fecha_nacimiento: '',
+        celular: '',
+        email_personal: '',
+        direccion: '',
+        // Procedencia escolar
         colegio_fin_secundaria: '',
         codigo_modular_colegio: '',
         anio_egreso_colegio: new Date().getFullYear() - 1,
@@ -123,7 +134,7 @@ export default function ModalInscripcionFlujo({
         }));
     };
 
-    // 1 -> 2: Pre-inscripción
+    // 1 -> 2: Registro inicial para generar código de tesorería (DNI)
     const handlePreInscribir = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -140,14 +151,14 @@ export default function ModalInscripcionFlujo({
             // Default comprobante sugerido
             setFormPaso3((prev) => ({
                 ...prev,
-                comprobante_pago: `REC-${new Date().getFullYear()}-${res.data.persona.numero_documento.slice(-4)}`,
+                comprobante_pago: `REC-${new Date().getFullYear()}-${res.data.persona?.numero_documento?.slice(-4) || '0001'}`,
             }));
             setActiveStep(1); // Paso 2: Código de Tesorería
         } catch (err) {
             if (err.response?.status === 422 && err.response?.data?.errors) {
                 setErrors(err.response.data.errors);
             } else {
-                setErrorMsg(err.response?.data?.message || 'Error al realizar la pre-inscripción.');
+                setErrorMsg(err.response?.data?.message || 'Error al registrar la solicitud de admisión.');
             }
         } finally {
             setLoading(false);
@@ -159,7 +170,7 @@ export default function ModalInscripcionFlujo({
         setActiveStep(2);
     };
 
-    // 3 -> 4: Validar Pago y obtener FUT
+    // 3 -> 4: Validar Pago y emitir FUT
     const handleConfirmarPago = async (e) => {
         e.preventDefault();
         if (!postulacionCreada?.id) return;
@@ -169,7 +180,7 @@ export default function ModalInscripcionFlujo({
         try {
             const res = await admissionService.validarPago(postulacionCreada.id, formPaso3);
             setPostulacionCreada(res.data);
-            setActiveStep(3); // Paso 4: Expediente Escolar
+            setActiveStep(3); // Paso 4: Ficha Integral de Datos Personales y Expediente
         } catch (err) {
             setErrorMsg(err.response?.data?.message || 'Error al validar el pago en tesorería.');
         } finally {
@@ -177,7 +188,7 @@ export default function ModalInscripcionFlujo({
         }
     };
 
-    // 4 -> 5: Completar Expediente Escolar
+    // 4 -> 5: Completar Datos Personales y Expediente Escolar
     const handleCompletarExpediente = async (e) => {
         e.preventDefault();
         if (!postulacionCreada?.id) return;
@@ -187,9 +198,9 @@ export default function ModalInscripcionFlujo({
         try {
             const res = await admissionService.completarExpediente(postulacionCreada.id, formPaso4);
             setPostulacionCreada(res.data);
-            setActiveStep(4); // Paso 5: Formatos Oficiales PDF
+            setActiveStep(4); // Paso 5: Formatos Oficiales A4
         } catch (err) {
-            setErrorMsg(err.response?.data?.message || 'Error al registrar el expediente escolar.');
+            setErrorMsg(err.response?.data?.message || 'Error al completar los datos personales y expediente.');
         } finally {
             setLoading(false);
         }
@@ -203,16 +214,22 @@ export default function ModalInscripcionFlujo({
         setPostulacionCreada(null);
     };
 
+    // Programas autorizados disponibles
+    const programasDisponibles = procesoDetalle?.programas_ofertados?.filter((po) => {
+        const progName = (po.programa || '').toLowerCase();
+        return progName.includes('inicial') || progName.includes('física') || progName.includes('fisica');
+    }) || procesoDetalle?.programas_ofertados || [];
+
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle sx={{ pb: 1, borderBottom: '1px solid #e2e8f0' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
-                        <Typography variant="h6" fontWeight={700} color={THEME_COLORS.textPrimary}>
-                            Inscripción Oficial de Postulante — Admisión {procesoDetalle?.codigo || '2026'}
+                        <Typography variant="h6" fontWeight={800} color={THEME_COLORS.textPrimary}>
+                            Registro de Solicitud de Admisión — Convocatoria {procesoDetalle?.codigo || '2026'}
                         </Typography>
                         <Typography variant="body2" color={THEME_COLORS.textSecondary}>
-                            Flujo institucional regulado: Pre-inscripción, Tesorería (DNI), Retorno de Pago, FUT y Expediente.
+                            Flujo institucional regulado: Solicitud Básica → Código Tesorería (DNI) → Retorno de Pago & FUT → Ficha Integral y Expediente.
                         </Typography>
                     </Box>
                     {postulacionCreada && (
@@ -221,6 +238,7 @@ export default function ModalInscripcionFlujo({
                             color="primary"
                             variant="outlined"
                             size="small"
+                            sx={{ fontWeight: 700 }}
                         />
                     )}
                 </Box>
@@ -232,7 +250,7 @@ export default function ModalInscripcionFlujo({
                     {STEPS.map((label, index) => (
                         <Step key={label}>
                             <StepLabel>
-                                <Typography variant="caption" fontWeight={activeStep === index ? 700 : 500}>
+                                <Typography variant="caption" fontWeight={activeStep === index ? 800 : 500}>
                                     {label}
                                 </Typography>
                             </StepLabel>
@@ -247,10 +265,11 @@ export default function ModalInscripcionFlujo({
                 )}
 
                 {/* PASO 1: Datos Personales Iniciales */}
+                {/* PASO 1: Solicitud Inicial (DNI, Nombres y Apellidos) */}
                 {activeStep === 0 && (
                     <form id="form-paso-1" onSubmit={handlePreInscribir}>
                         <Typography variant="subtitle2" sx={{ color: THEME_COLORS.primary, fontWeight: 700, mb: 1.5 }}>
-                            1. Elija su Programa de estudios y Modalidad de Admisión
+                            1. Selección de Programa Pedagógico Autorizado
                         </Typography>
 
                         <TextField
@@ -262,172 +281,105 @@ export default function ModalInscripcionFlujo({
                             required
                             fullWidth
                             size="small"
-                            sx={{ mb: 2 }}
+                            sx={{ mb: 2.5 }}
                             error={Boolean(errors.admision_programa_ofertado_id)}
                             helperText={errors.admision_programa_ofertado_id?.[0]}
                         >
-                            {procesoDetalle?.programas_ofertados?.map((po) => (
+                            {programasDisponibles.map((po) => (
                                 <MenuItem key={po.id} value={po.id}>
-                                    {po.programa} — {po.modalidad} ({po.vacantes} vacantes disponibles)
+                                    {po.programa} — {po.modalidad} ({po.vacantes} vacantes ofertadas)
                                 </MenuItem>
                             ))}
                         </TextField>
 
                         <Typography variant="subtitle2" sx={{ color: THEME_COLORS.primary, fontWeight: 700, mb: 1.5 }}>
-                            2. Registrar datos (su DNI será registrado como Código de Tesorería)
+                            2. Identificación Básica del Postulante
                         </Typography>
 
-                        <Box
-                            sx={{
-                                display: "grid",
-                                gridTemplateColumns: {
-                                    xs: "1fr",
-                                    sm: "repeat(12, minmax(0, 1fr))",
-                                },
-                                gap: 2,
-                            }}
-                        >
-                            {/* Identificación */}
-                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 4" } }}>
+                        <Alert severity="info" sx={{ mb: 2, fontSize: 13, borderRadius: 2 }}>
+                            Para emitir el Código de Pago de Tesorería, <strong>únicamente se requieren su documento de identidad y nombres completos</strong>. Los demás datos personales se completarán tras la emisión del Código FUT.
+                        </Alert>
+
+                        <Grid container spacing={2}>
+                            <Grid item xs={12} sm={4}>
                                 <TextField
                                     select
-                                    label="Tipo de documento"
+                                    label="Tipo de Documento"
                                     name="tipo_documento"
                                     value={formPaso1.tipo_documento}
                                     onChange={handlePaso1Change}
                                     fullWidth
                                     size="small"
                                 >
-                                    <MenuItem value="DNI">DNI</MenuItem>
-                                    <MenuItem value="CE">Carnet de extranjería</MenuItem>
+                                    <MenuItem value="DNI">DNI (Documento Nacional)</MenuItem>
+                                    <MenuItem value="CE">Carnet de Extranjería</MenuItem>
                                     <MenuItem value="PASAPORTE">Pasaporte</MenuItem>
                                 </TextField>
-                            </Box>
+                            </Grid>
 
-                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 8" } }}>
+                            <Grid item xs={12} sm={8}>
                                 <TextField
-                                    label="Número de documento"
+                                    label="Número de Documento (DNI) *"
                                     name="numero_documento"
                                     value={formPaso1.numero_documento}
                                     onChange={handlePaso1Change}
                                     required
                                     fullWidth
                                     size="small"
-                                    placeholder="8 dígitos si es DNI"
+                                    placeholder="8 dígitos para DNI (será su código de tesorería)"
                                     error={Boolean(errors.numero_documento)}
-                                    helperText={errors.numero_documento?.[0]}
+                                    helperText={errors.numero_documento?.[0] || 'Este número será su código único para pagar en Tesorería'}
                                 />
-                            </Box>
+                            </Grid>
 
                             {/* Nombres y apellidos */}
-                            {[
-                                {
-                                    label: "Nombres",
-                                    name: "nombres",
-                                    required: true,
-                                    error: errors.nombres,
-                                },
-                                {
-                                    label: "Apellido paterno",
-                                    name: "apellido_paterno",
-                                    required: true,
-                                    error: errors.apellido_paterno,
-                                },
-                                {
-                                    label: "Apellido materno",
-                                    name: "apellido_materno",
-                                    required: true,
-                                    error: errors.apellido_materno,
-                                },
-                            ].map((field) => (
-                                <Box
-                                    key={field.name}
-                                    sx={{ gridColumn: { xs: "span 1", sm: "span 4" } }}
-                                >
-                                    <TextField
-                                        label={field.label}
-                                        name={field.name}
-                                        value={formPaso1[field.name]}
-                                        onChange={handlePaso1Change}
-                                        required={field.required}
-                                        fullWidth
-                                        size="small"
-                                        error={Boolean(field.error)}
-                                        helperText={field.error?.[0]}
-                                    />
-                                </Box>
-                            ))}
-
-                            {/* Datos personales */}
-                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 4" } }}>
+                            <Grid item xs={12} sm={4}>
                                 <TextField
-                                    select
-                                    label="Sexo"
-                                    name="sexo"
-                                    value={formPaso1.sexo}
+                                    label="Nombres *"
+                                    name="nombres"
+                                    value={formPaso1.nombres}
                                     onChange={handlePaso1Change}
+                                    required
                                     fullWidth
                                     size="small"
-                                >
-                                    <MenuItem value="M">Masculino</MenuItem>
-                                    <MenuItem value="F">Femenino</MenuItem>
-                                </TextField>
-                            </Box>
-
-                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 4" } }}>
-                                <TextField
-                                    type="date"
-                                    label="Fecha de nacimiento"
-                                    name="fecha_nacimiento"
-                                    value={formPaso1.fecha_nacimiento}
-                                    onChange={handlePaso1Change}
-                                    fullWidth
-                                    size="small"
-                                    InputLabelProps={{ shrink: true }}
+                                    error={Boolean(errors.nombres)}
+                                    helperText={errors.nombres?.[0]}
                                 />
-                            </Box>
+                            </Grid>
 
-                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 4" } }}>
+                            <Grid item xs={12} sm={4}>
                                 <TextField
-                                    label="Celular"
-                                    name="celular"
-                                    value={formPaso1.celular}
+                                    label="Apellido Paterno *"
+                                    name="apellido_paterno"
+                                    value={formPaso1.apellido_paterno}
                                     onChange={handlePaso1Change}
+                                    required
                                     fullWidth
                                     size="small"
-                                    placeholder="Ej. 984512301"
+                                    error={Boolean(errors.apellido_paterno)}
+                                    helperText={errors.apellido_paterno?.[0]}
                                 />
-                            </Box>
+                            </Grid>
 
-                            {/* Contacto */}
-                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 6" } }}>
+                            <Grid item xs={12} sm={4}>
                                 <TextField
-                                    label="Correo electrónico personal"
-                                    name="email_personal"
-                                    value={formPaso1.email_personal}
+                                    label="Apellido Materno *"
+                                    name="apellido_materno"
+                                    value={formPaso1.apellido_materno}
                                     onChange={handlePaso1Change}
+                                    required
                                     fullWidth
                                     size="small"
-                                    placeholder="ejemplo@gmail.com"
+                                    error={Boolean(errors.apellido_materno)}
+                                    helperText={errors.apellido_materno?.[0]}
                                 />
-                            </Box>
-
-                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 6" } }}>
-                                <TextField
-                                    label="Dirección / domicilio real"
-                                    name="direccion"
-                                    value={formPaso1.direccion}
-                                    onChange={handlePaso1Change}
-                                    fullWidth
-                                    size="small"
-                                    placeholder="Av. o Jr., distrito"
-                                />
-                            </Box>
-                        </Box>
+                            </Grid>
+                        </Grid>
                     </form>
                 )}
 
                 {/* PASO 2: Código de Tesorería Generado (DNI) */}
+                {/* PASO 2: Código de Tesorería Asignado (DNI) */}
                 {activeStep === 1 && postulacionCreada && (
                     <Box sx={{ textAlign: 'center', py: 2 }}>
                         <Box
@@ -448,16 +400,16 @@ export default function ModalInscripcionFlujo({
                         </Box>
 
                         <Typography variant="h6" fontWeight={800} gutterBottom>
-                            ¡Pre-inscripción Exitosa! Código de Tesorería Generado
+                            Solicitud Registrada con Éxito
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 500, mx: 'auto', mb: 3 }}>
-                            El postulante debe acercarse a Caja/Tesorería o efectuar su abono indicando su número de documento de identidad como código único de pago.
+                        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 520, mx: 'auto', mb: 3 }}>
+                            Se ha generado la orden de pago en Tesorería. El postulante debe abonar el derecho de admisión indicando su DNI como código único de cobranza.
                         </Typography>
 
                         <Card
                             elevation={0}
                             sx={{
-                                maxWidth: 450,
+                                maxWidth: 460,
                                 mx: 'auto',
                                 border: `2px dashed ${THEME_COLORS.primary}`,
                                 borderRadius: 3,
@@ -467,7 +419,7 @@ export default function ModalInscripcionFlujo({
                             }}
                         >
                             <CardContent sx={{ p: 1 }}>
-                                <Typography variant="caption" sx={{ textTransform: 'uppercase', color: '#0369a1', fontWeight: 700 }}>
+                                <Typography variant="caption" sx={{ textTransform: 'uppercase', color: '#0369a1', fontWeight: 800 }}>
                                     Código de Pago para Tesorería (DNI)
                                 </Typography>
                                 <Typography variant="h4" fontWeight={900} sx={{ color: '#0f172a', letterSpacing: 2, my: 1 }}>
@@ -477,11 +429,13 @@ export default function ModalInscripcionFlujo({
                                 <Grid container spacing={1} sx={{ textAlign: 'left', fontSize: 13 }}>
                                     <Grid item xs={6} color="text.secondary">Postulante:</Grid>
                                     <Grid item xs={6} fontWeight={600}>{postulacionCreada.persona?.nombre_completo}</Grid>
+                                    <Grid item xs={6} color="text.secondary">Carrera:</Grid>
+                                    <Grid item xs={6} fontWeight={600}>{postulacionCreada.programa_ofertado?.programa}</Grid>
                                     <Grid item xs={6} color="text.secondary">Concepto:</Grid>
-                                    <Grid item xs={6} fontWeight={600}>Derecho de Admisión 2026</Grid>
+                                    <Grid item xs={6} fontWeight={600}>Derecho de Examen de Admisión</Grid>
                                     <Grid item xs={6} color="text.secondary">Monto a Abonar:</Grid>
                                     <Grid item xs={6} fontWeight={800} color={THEME_COLORS.primary}>S/ 150.00</Grid>
-                                    <Grid item xs={6} color="text.secondary">Estado Actual:</Grid>
+                                    <Grid item xs={6} color="text.secondary">Estado de Pago:</Grid>
                                     <Grid item xs={6}>
                                         <Chip label="PENDIENTE DE PAGO" size="small" color="warning" sx={{ fontWeight: 700 }} />
                                     </Grid>
@@ -492,14 +446,15 @@ export default function ModalInscripcionFlujo({
                 )}
 
                 {/* PASO 3: Retorno de Tesorería (Pagado/Válido) & Emisión de FUT */}
+                {/* PASO 3: Validación de Pago en Tesorería & Emisión de FUT */}
                 {activeStep === 2 && postulacionCreada && (
                     <form id="form-paso-3" onSubmit={handleConfirmarPago}>
                         <Box sx={{ textAlign: 'center', mb: 3 }}>
                             <Typography variant="h6" fontWeight={800}>
-                                Validación y Retorno de Pago de Tesorería
+                                Validación de Pago y Emisión de Código FUT
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                                Ingrese el número de recibo o comprobante emitido por Tesorería para el código <strong>{postulacionCreada.codigo_tesoreria}</strong>. El sistema emitirá el número oficial de FUT.
+                                Ingrese el número de comprobante emitido por Tesorería para el código <strong>{postulacionCreada.codigo_tesoreria}</strong>. El sistema emitirá el número reglamentario de FUT.
                             </Typography>
                         </Box>
 
@@ -514,13 +469,13 @@ export default function ModalInscripcionFlujo({
                                         required
                                         fullWidth
                                         size="small"
-                                        placeholder="Ej. REC-2026-0042 o 0984123"
+                                        placeholder="Ej. REC-2026-0042 o BOL-0012"
                                     />
                                 </Grid>
                                 <Grid item xs={12} sm={6}>
                                     <TextField
                                         type="number"
-                                        label="Monto Abonado (S/)"
+                                        label="Monto Abonado (S/) *"
                                         name="monto_pago"
                                         value={formPaso3.monto_pago}
                                         onChange={handlePaso3Change}
@@ -546,16 +501,98 @@ export default function ModalInscripcionFlujo({
                 )}
 
                 {/* PASO 4: Expediente Escolar (Colegio Modular) y Requisitos */}
+                {/* PASO 4: Ficha Integral de Datos Personales y Expediente Escolar */}
                 {activeStep === 3 && postulacionCreada && (
                     <form id="form-paso-4" onSubmit={handleCompletarExpediente}>
-                        {postulacionCreada.numero_fut && (
-                            <Alert severity="success" icon={<FileCheck size={20} />} sx={{ mb: 2.5, fontWeight: 600 }}>
-                                ¡FUT Oficial Generado: <strong>{postulacionCreada.numero_fut}</strong>! Proceda a completar la procedencia escolar y verificar requisitos.
+                        {postulacionCreada.numero_fut ? (
+                            <Alert severity="success" icon={<FileCheck size={20} />} sx={{ mb: 2.5, fontWeight: 700 }}>
+                                ¡Código Oficial de FUT Habilitado: <strong>{postulacionCreada.numero_fut}</strong>! Ahora complete la ficha integral de datos personales y expediente.
+                            </Alert>
+                        ) : (
+                            <Alert severity="warning" icon={<Lock size={20} />} sx={{ mb: 2.5, fontWeight: 700 }}>
+                                Debe validar el pago en Tesorería para habilitar el Código de FUT antes de completar sus datos personales y expediente.
                             </Alert>
                         )}
 
+                        {/* 1. Datos Personales Complementarios */}
                         <Typography variant="subtitle2" sx={{ color: THEME_COLORS.primary, fontWeight: 700, mb: 1.5 }}>
-                            1. Datos de la Institución Educativa donde Concluyó Secundaria
+                            1. Datos Personales Complementarios del Postulante
+                        </Typography>
+
+                        <Grid container spacing={2} sx={{ mb: 3 }}>
+                            <Grid item xs={12} sm={3}>
+                                <TextField
+                                    select
+                                    label="Sexo *"
+                                    name="sexo"
+                                    value={formPaso4.sexo}
+                                    onChange={handlePaso4Change}
+                                    required
+                                    fullWidth
+                                    size="small"
+                                >
+                                    <MenuItem value="M">Masculino</MenuItem>
+                                    <MenuItem value="F">Femenino</MenuItem>
+                                </TextField>
+                            </Grid>
+
+                            <Grid item xs={12} sm={3}>
+                                <TextField
+                                    type="date"
+                                    label="Fecha de Nacimiento *"
+                                    name="fecha_nacimiento"
+                                    value={formPaso4.fecha_nacimiento}
+                                    onChange={handlePaso4Change}
+                                    required
+                                    fullWidth
+                                    size="small"
+                                    InputLabelProps={{ shrink: true }}
+                                />
+                            </Grid>
+
+                            <Grid item xs={12} sm={3}>
+                                <TextField
+                                    label="Celular *"
+                                    name="celular"
+                                    value={formPaso4.celular}
+                                    onChange={handlePaso4Change}
+                                    required
+                                    fullWidth
+                                    size="small"
+                                    placeholder="9 dígitos"
+                                />
+                            </Grid>
+
+                            <Grid item xs={12} sm={3}>
+                                <TextField
+                                    type="email"
+                                    label="Correo Electrónico"
+                                    name="email_personal"
+                                    value={formPaso4.email_personal}
+                                    onChange={handlePaso4Change}
+                                    fullWidth
+                                    size="small"
+                                    placeholder="postulante@gmail.com"
+                                />
+                            </Grid>
+
+                            <Grid item xs={12}>
+                                <TextField
+                                    label="Dirección / Domicilio Real *"
+                                    name="direccion"
+                                    value={formPaso4.direccion}
+                                    onChange={handlePaso4Change}
+                                    required
+                                    fullWidth
+                                    size="small"
+                                    placeholder="Av., Jr., Calle, Urbanización y Distrito"
+                                />
+                            </Grid>
+                        </Grid>
+
+                        {/* 2. Procedencia Escolar */}
+                        <Typography variant="subtitle2" sx={{ color: THEME_COLORS.primary, fontWeight: 700, mb: 1.5 }}>
+                            2. Institución Educativa donde Concluyó Secundaria
                         </Typography>
 
                         <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -601,7 +638,7 @@ export default function ModalInscripcionFlujo({
                             <Grid item xs={12} sm={3}>
                                 <TextField
                                     select
-                                    label="Gestión"
+                                    label="Tipo de Gestión *"
                                     name="colegio_tipo_gestion"
                                     value={formPaso4.colegio_tipo_gestion}
                                     onChange={handlePaso4Change}
@@ -636,8 +673,10 @@ export default function ModalInscripcionFlujo({
                             </Grid>
                         </Grid>
 
+                        {/* 3. Requisitos Físicos */}
                         <Typography variant="subtitle2" sx={{ color: THEME_COLORS.primary, fontWeight: 700, mb: 1 }}>
                             2. Verificación de Requisitos Físicos y Fotografía
+                            3. Verificación de Requisitos Documentarios Físicos
                         </Typography>
 
                         <Paper elevation={0} sx={{ p: 2, border: '1px solid #e2e8f0', borderRadius: 2 }}>
@@ -678,7 +717,7 @@ export default function ModalInscripcionFlujo({
                                                 color="primary"
                                             />
                                         }
-                                        label="Certificado Nacimiento Orig."
+                                        label="Partida de Nacimiento Orig."
                                     />
                                 </Grid>
                                 <Grid item xs={12}>
@@ -720,9 +759,10 @@ export default function ModalInscripcionFlujo({
                             </Box>
                             <Typography variant="h6" fontWeight={800}>
                                 Formatos Oficiales Generados Exitosamente
+                                Formatos Oficiales Listos para Emisión
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                                Imprima o guarde en PDF los documentos obligatorios reglamentarios del proceso de admisión.
+                                Se han consolidado todos los datos. Proceda a imprimir o visualizar el FUT institucional y la Declaración Jurada reglamentaria.
                             </Typography>
                         </Box>
 
@@ -749,8 +789,8 @@ export default function ModalInscripcionFlujo({
                                                 Formulario Único de Trámite (FUT)
                                             </Typography>
                                         </Box>
-                                        <Typography variant="caption" sx={{ color: '#0369a1', fontWeight: 700, display: 'block', mb: 1 }}>
-                                            N° OFICIAL: {postulacionCreada.numero_fut}
+                                        <Typography variant="body2" color="text.secondary" paragraph>
+                                            Formato oficial prellenado con el N° de FUT <strong>{postulacionCreada.numero_fut}</strong>, membrete ministerial, datos del postulante y casillas reglamentarias en blanco para Mesa de Partes.
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary" fontSize={12} paragraph>
                                             Incluye datos completos del postulante, carrera ofertada, código modular del colegio y <strong>espacios en blanco para completar con lapicero</strong> por Mesa de Partes (folios, observaciones y firma).
@@ -760,8 +800,8 @@ export default function ModalInscripcionFlujo({
                                     <Button
                                         variant="contained"
                                         startIcon={<Printer size={16} />}
-                                        onClick={() => onViewDocument(
-                                            `FUT Oficial — ${postulacionCreada.numero_fut}`,
+                                        onClick={() => onViewDocument?.(
+                                            `Formato Oficial de FUT — ${postulacionCreada.numero_fut}`,
                                             admissionService.getFutPrintUrl(postulacionCreada.id)
                                         )}
                                         sx={{
@@ -772,7 +812,7 @@ export default function ModalInscripcionFlujo({
                                             mt: 2,
                                         }}
                                     >
-                                        Ver / Imprimir FUT (A4)
+                                        Ver e Imprimir FUT Oficial (A4)
                                     </Button>
                                 </Paper>
                             </Grid>
@@ -783,7 +823,7 @@ export default function ModalInscripcionFlujo({
                                     elevation={0}
                                     sx={{
                                         p: 2.5,
-                                        border: '1.5px solid #0f172a',
+                                        border: '1.5px solid #475569',
                                         borderRadius: 2.5,
                                         backgroundColor: '#f8fafc',
                                         height: '100%',
@@ -794,35 +834,33 @@ export default function ModalInscripcionFlujo({
                                 >
                                     <Box>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                            <ShieldCheck size={22} color="#0f172a" />
+                                            <ShieldCheck size={22} color="#334155" />
                                             <Typography variant="subtitle1" fontWeight={800} color="#0f172a">
                                                 Declaración Jurada de Antecedentes
                                             </Typography>
                                         </Box>
-                                        <Typography variant="caption" sx={{ color: '#475569', fontWeight: 700, display: 'block', mb: 1 }}>
-                                            LEY N° 27444 — PROCEDIMIENTO ADMINISTRATIVO
-                                        </Typography>
                                         <Typography variant="body2" color="text.secondary" fontSize={12} paragraph>
                                             Documento legal obligatorio donde el postulante declara bajo juramento no registrar antecedentes penales, judiciales ni policiales, con recuadros para <strong>firma manuscrita e índice derecho (huella dactilar)</strong>.
                                         </Typography>
                                     </Box>
 
                                     <Button
-                                        variant="contained"
+                                        variant="outlined"
                                         startIcon={<Printer size={16} />}
-                                        onClick={() => onViewDocument(
-                                            `Declaración Jurada — ${postulacionCreada.persona?.numero_documento}`,
+                                        onClick={() => onViewDocument?.(
+                                            `Declaración Jurada Oficial — ${postulacionCreada.persona?.numero_documento}`,
                                             admissionService.getDeclaracionPrintUrl(postulacionCreada.id)
                                         )}
                                         sx={{
-                                            backgroundColor: '#0f172a',
-                                            '&:hover': { backgroundColor: '#1e293b' },
+                                            borderColor: '#475569',
+                                            color: '#1e293b',
+                                            '&:hover': { backgroundColor: '#f1f5f9', borderColor: '#0f172a' },
                                             textTransform: 'none',
-                                            fontWeight: 600,
+                                            fontWeight: 700,
                                             mt: 2,
                                         }}
                                     >
-                                        Ver / Imprimir Declaración Jurada
+                                        Ver e Imprimir Dec. Jurada (A4)
                                     </Button>
                                 </Paper>
                             </Grid>
@@ -830,13 +868,13 @@ export default function ModalInscripcionFlujo({
                     </Box>
                 )}
 
-                {/* PASO 6: Registro Concluido */}
-                {activeStep === 5 && postulacionCreada && (
-                    <Box sx={{ textAlign: 'center', py: 3 }}>
+                {/* PASO 6: Registro Finalizado */}
+                {activeStep === 5 && (
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
                         <Box
                             sx={{
-                                width: 70,
-                                height: 70,
+                                width: 72,
+                                height: 72,
                                 borderRadius: '50%',
                                 backgroundColor: THEME_COLORS.successLight,
                                 color: THEME_COLORS.successText,
@@ -847,13 +885,13 @@ export default function ModalInscripcionFlujo({
                                 mb: 2,
                             }}
                         >
-                            <CheckCircle2 size={40} />
+                            <CheckCircle2 size={44} />
                         </Box>
                         <Typography variant="h5" fontWeight={800} gutterBottom>
-                            ¡Postulante Registrado e Inscrito Correctamente!
+                            ¡Postulante Inscrito Exitosamente!
                         </Typography>
-                        <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 550, mx: 'auto', mb: 3 }}>
-                            El expediente físico y digital se encuentra registrado en el sistema. El postulante ha sido incorporado al padrón oficial y se encuentra habilitado para la asignación de aulas y pruebas del proceso de admisión.
+                        <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 500, mx: 'auto', mb: 3 }}>
+                            El expediente del postulante ha quedado consolidado en el padrón oficial con su Código FUT, comprobante de pago de tesorería y procedencia escolar verificada.
                         </Typography>
 
                         <Paper elevation={0} sx={{ p: 2, maxWidth: 450, mx: 'auto', border: '1px solid #e2e8f0', borderRadius: 2, textAlign: 'left', mb: 2 }}>
@@ -876,31 +914,39 @@ export default function ModalInscripcionFlujo({
                 )}
             </DialogContent>
 
-            <DialogActions sx={{ p: 2, justifyContent: 'space-between', borderTop: '1px solid #e2e8f0' }}>
-                <Button
-                    onClick={onClose}
-                    disabled={loading}
-                    sx={{ textTransform: 'none', color: THEME_COLORS.textSecondary }}
-                >
-                    {activeStep === 5 ? 'Cerrar' : 'Cancelar'}
-                </Button>
+            <DialogActions sx={{ p: 2, borderTop: '1px solid #e2e8f0', justifyContent: 'space-between' }}>
+                <Box>
+                    {activeStep > 0 && activeStep < 5 && (
+                        <Button
+                            onClick={() => setActiveStep((prev) => prev - 1)}
+                            startIcon={<ChevronLeft size={16} />}
+                            disabled={loading}
+                        >
+                            Atrás
+                        </Button>
+                    )}
+                </Box>
 
-                <Box sx={{ display: 'flex', gap: 1 }}>
+                <Box sx={{ display: 'flex', gap: 1.5 }}>
+                    <Button onClick={onClose} disabled={loading} color="inherit">
+                        Cerrar
+                    </Button>
+
                     {activeStep === 0 && (
                         <Button
                             type="submit"
                             form="form-paso-1"
                             variant="contained"
                             disabled={loading}
-                            endIcon={<ChevronRight size={16} />}
+                            endIcon={loading ? <CircularProgress size={16} color="inherit" /> : <ChevronRight size={16} />}
                             sx={{
                                 backgroundColor: THEME_COLORS.primary,
                                 '&:hover': { backgroundColor: THEME_COLORS.primaryHover },
                                 textTransform: 'none',
-                                fontWeight: 600,
+                                fontWeight: 700,
                             }}
                         >
-                            {loading ? <CircularProgress size={20} color="inherit" /> : 'Generar Código de Tesorería (DNI)'}
+                            {loading ? 'Generando...' : 'Generar Código Tesorería (DNI)'}
                         </Button>
                     )}
 
@@ -913,10 +959,10 @@ export default function ModalInscripcionFlujo({
                                 backgroundColor: THEME_COLORS.primary,
                                 '&:hover': { backgroundColor: THEME_COLORS.primaryHover },
                                 textTransform: 'none',
-                                fontWeight: 600,
+                                fontWeight: 700,
                             }}
                         >
-                            Validar Retorno de Pago de Tesorería
+                            Continuar a Validación de Pago
                         </Button>
                     )}
 
@@ -926,15 +972,15 @@ export default function ModalInscripcionFlujo({
                             form="form-paso-3"
                             variant="contained"
                             disabled={loading}
-                            endIcon={<ChevronRight size={16} />}
+                            endIcon={loading ? <CircularProgress size={16} color="inherit" /> : <ChevronRight size={16} />}
                             sx={{
-                                backgroundColor: THEME_COLORS.success,
-                                '&:hover': { backgroundColor: '#15803d' },
+                                backgroundColor: THEME_COLORS.primary,
+                                '&:hover': { backgroundColor: THEME_COLORS.primaryHover },
                                 textTransform: 'none',
-                                fontWeight: 600,
+                                fontWeight: 700,
                             }}
                         >
-                            {loading ? <CircularProgress size={20} color="inherit" /> : 'Confirmar Pago y Emitir FUT'}
+                            {loading ? 'Validando...' : 'Confirmar Pago & Emitir FUT'}
                         </Button>
                     )}
 
@@ -943,16 +989,16 @@ export default function ModalInscripcionFlujo({
                             type="submit"
                             form="form-paso-4"
                             variant="contained"
-                            disabled={loading}
-                            endIcon={<ChevronRight size={16} />}
+                            disabled={loading || !postulacionCreada?.numero_fut}
+                            endIcon={loading ? <CircularProgress size={16} color="inherit" /> : <ChevronRight size={16} />}
                             sx={{
                                 backgroundColor: THEME_COLORS.primary,
                                 '&:hover': { backgroundColor: THEME_COLORS.primaryHover },
                                 textTransform: 'none',
-                                fontWeight: 600,
+                                fontWeight: 700,
                             }}
                         >
-                            {loading ? <CircularProgress size={20} color="inherit" /> : 'Guardar Expediente y Generar Documentos'}
+                            {loading ? 'Guardando...' : 'Guardar Ficha Integral & Ver Formatos'}
                         </Button>
                     )}
 
@@ -962,13 +1008,13 @@ export default function ModalInscripcionFlujo({
                             onClick={() => setActiveStep(5)}
                             endIcon={<ChevronRight size={16} />}
                             sx={{
-                                backgroundColor: THEME_COLORS.primary,
-                                '&:hover': { backgroundColor: THEME_COLORS.primaryHover },
+                                backgroundColor: THEME_COLORS.success,
+                                '&:hover': { backgroundColor: '#15803d' },
                                 textTransform: 'none',
-                                fontWeight: 600,
+                                fontWeight: 700,
                             }}
                         >
-                            Continuar a Finalización
+                            Concluir y Ver Resumen
                         </Button>
                     )}
 
@@ -977,14 +1023,13 @@ export default function ModalInscripcionFlujo({
                             variant="contained"
                             onClick={handleFinalizar}
                             sx={{
-                                backgroundColor: THEME_COLORS.success,
-                                '&:hover': { backgroundColor: '#15803d' },
+                                backgroundColor: THEME_COLORS.primary,
                                 textTransform: 'none',
-                                fontWeight: 600,
                                 px: 3,
+                                fontWeight: 700,
                             }}
                         >
-                            Finalizar y Ver en el Padrón
+                            Finalizar y Volver al Padrón
                         </Button>
                     )}
                 </Box>

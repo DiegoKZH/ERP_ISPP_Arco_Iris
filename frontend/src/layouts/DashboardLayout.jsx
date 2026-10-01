@@ -21,7 +21,7 @@ import {
     useMediaQuery,
     useTheme,
 } from '@mui/material';
-import { Menu as MenuIcon, LayoutDashboard, Users, GraduationCap, LogOut, User, Award } from 'lucide-react';
+import { Menu as MenuIcon, LayoutDashboard, Users, GraduationCap, LogOut, User, Award, CreditCard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const DRAWER_WIDTH = 260;
@@ -79,6 +79,12 @@ export default function DashboardLayout() {
             path: '/admission',
             show: hasRole('superadmin') || hasRole('admin'),
         },
+        {
+            text: 'Módulo de Tesorería',
+            icon: <CreditCard size={20} />,
+            path: '/treasury',
+            show: hasRole('superadmin') || hasRole('admin'),
+        },
     ];
 
     const drawerContent = (
@@ -87,7 +93,7 @@ export default function DashboardLayout() {
                 <GraduationCap size={28} color="#1976d2" />
                 <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                     <Typography variant="h6" fontWeight="bold" color="primary" noWrap>
-                        ERP NSTITUTO
+                        ERP IESPP
                     </Typography>
                     <Typography variant="body2" fontWeight="bold" color="primary" noWrap>
                         ARCO IRIS

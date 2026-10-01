@@ -18,6 +18,22 @@ export const admissionService = {
     },
 
     /**
+     * Crear nueva convocatoria de admisión con los 2 programas autorizados.
+     */
+    createProceso: async (data) => {
+        const response = await api.post('/admision/procesos', data);
+        return response.data;
+    },
+
+    /**
+     * Alternar estado entre Convocatoria Abierta y Convocatoria Cerrada.
+     */
+    toggleEstadoProceso: async (id) => {
+        const response = await api.patch(`/admision/procesos/${id}/toggle-estado`);
+        return response.data;
+    },
+
+    /**
      * Get list of applicant applications.
      */
     getPostulaciones: async (params = {}) => {
