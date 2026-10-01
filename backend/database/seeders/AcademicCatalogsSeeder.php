@@ -23,11 +23,11 @@ class AcademicCatalogsSeeder extends Seeder
             ],
             [
                 'codigo' => 'EF-01',
-                'nombre' => 'Educación Fisica',
+                'nombre' => 'Educación Física',
                 'nivel_academico' => 'Pregrado',
                 'duracion_semestres' => 10,
                 'is_active' => true,
-            ],/*
+            ],
             [
                 'codigo' => 'EP-01',
                 'nombre' => 'Educación Primaria',
@@ -49,13 +49,6 @@ class AcademicCatalogsSeeder extends Seeder
                 'duracion_semestres' => 10,
                 'is_active' => true,
             ],
-            [
-                'codigo' => 'EFI-01',
-                'nombre' => 'Educación Física',
-                'nivel_academico' => 'Pregrado',
-                'duracion_semestres' => 10,
-                'is_active' => true,
-            ],*/
         ];
 
         foreach ($programas as $prog) {

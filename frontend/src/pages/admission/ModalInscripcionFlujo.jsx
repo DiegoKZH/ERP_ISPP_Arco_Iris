@@ -6,19 +6,23 @@ import {
     DialogActions,
     Button,
     Box,
+    InputLabel,
     Typography,
     TextField,
     MenuItem,
     Grid,
     CircularProgress,
     Alert,
+    Select,
     Stepper,
     Step,
     StepLabel,
     Paper,
     Divider,
     Checkbox,
+    FormControl,
     FormControlLabel,
+    FormHelperText,
     Chip,
     Card,
     CardContent,
@@ -249,46 +253,105 @@ export default function ModalInscripcionFlujo({
                 {/* PASO 1: Datos Personales Iniciales */}
                 {activeStep === 0 && (
                     <form id="form-paso-1" onSubmit={handlePreInscribir}>
-                        <Typography variant="subtitle2" sx={{ color: THEME_COLORS.primary, fontWeight: 700, mb: 1.5 }}>
-                            1. Elija su Programa de estudios y Modalidad de Admisión
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="h6" fontWeight={700}>
+                            Registra tus datos
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Completa la información del postulante. Los campos con * son obligatorios.
+                        </Typography>
+                    </Box>
+
+                    {/* 1. Programa y modalidad */}
+                    <Paper variant="outlined" sx={{ p: 2.5, mb: 2, borderRadius: 2 }}>
+                        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
+                            1. Programa y modalidad
                         </Typography>
 
-                        <TextField
-                            select
-                            label="Programa de Estudios"
-                            name="admision_programa_ofertado_id"
-                            value={formPaso1.admision_programa_ofertado_id}
-                            onChange={handlePaso1Change}
-                            required
-                            fullWidth
-                            size="small"
-                            sx={{ mb: 2 }}
-                            error={Boolean(errors.admision_programa_ofertado_id)}
-                            helperText={errors.admision_programa_ofertado_id?.[0]}
-                        >
-                            {procesoDetalle?.programas_ofertados?.map((po) => (
-                                <MenuItem key={po.id} value={po.id}>
-                                    {po.programa} — {po.modalidad} ({po.vacantes} vacantes disponibles)
-                                </MenuItem>
-                            ))}
-                        </TextField>
+                        
+                    <TextField
+                        select
+                        label="Programa de estudios y modalidad de admisión"
+                        name="admision_programa_ofertado_id"
+                        value={formPaso1.admision_programa_ofertado_id}
+                        onChange={handlePaso1Change}
+                        required
+                        fullWidth
+                        size="small"
+                        error={Boolean(errors.admision_programa_ofertado_id)}
+                        helperText={errors.admision_programa_ofertado_id?.[0]}
 
-                        <Typography variant="subtitle2" sx={{ color: THEME_COLORS.primary, fontWeight: 700, mb: 1.5 }}>
-                            2. Registrar datos (su DNI será registrado como Código de Tesorería)
-                        </Typography>
-
-                        <Box
-                            sx={{
-                                display: "grid",
-                                gridTemplateColumns: {
-                                    xs: "1fr",
-                                    sm: "repeat(12, minmax(0, 1fr))",
+                        SelectProps={{
+                            displayEmpty: true,
+                            MenuProps: {
+                                PaperProps: {
+                                    sx: {
+                                        maxHeight: 320,
+                                        borderRadius: 2,
+                                        mt: 0.5,
+                                        boxShadow: 3,
+                                    },
                                 },
-                                gap: 2,
-                            }}
-                        >
-                            {/* Identificación */}
-                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 4" } }}>
+                            },
+                        }}
+
+                        sx={{
+                            '& .MuiSelect-select': {
+                                py: 1.2,
+                                minHeight: '42px',
+                            },
+                        }}
+                    >
+                        {(procesoDetalle?.programas_ofertados ?? []).length > 0 ? (
+                            procesoDetalle.programas_ofertados.map((programaOfertado) => (
+                                <MenuItem
+                                    key={programaOfertado.id}
+                                    value={programaOfertado.id}
+                                    sx={{
+                                        py: 1.5,
+                                        whiteSpace: 'normal',
+                                        alignItems: 'flex-start',
+                                        borderBottom: '1px solid',
+                                        borderColor: 'divider',
+                                    }}
+                                >
+                                    <Box sx={{ width: '100%' }}>
+                                        <Typography
+                                            variant="body2"
+                                            fontWeight={600}
+                                            color="text.primary"
+                                        >
+                                            {programaOfertado.programa}
+                                            {' — '}
+                                            {programaOfertado.modalidad}
+                                        </Typography>
+
+                                        <Typography
+                                            variant="caption"
+                                            color="text.secondary"
+                                            sx={{ display: 'block', mt: 0.5 }}
+                                        >
+                                            {programaOfertado.vacantes} vacantes disponibles
+                                        </Typography>
+                                    </Box>
+                                </MenuItem>
+                            ))
+                        ) : (
+                            <MenuItem disabled>
+                                No hay programas ofertados disponibles
+                            </MenuItem>
+                        )}
+                    </TextField>
+                    </Paper>
+
+                    {/* 2. Documento de identidad */}
+                    <Paper variant="outlined" sx={{ p: 2.5, mb: 2, borderRadius: 2 }}>
+                        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
+                            2. Documento de identidad
+                        </Typography>
+
+                        <Grid container spacing={2}>
+                            <Grid item xs={12} sm={4}>
                                 <TextField
                                     select
                                     label="Tipo de documento"
@@ -302,9 +365,9 @@ export default function ModalInscripcionFlujo({
                                     <MenuItem value="CE">Carnet de extranjería</MenuItem>
                                     <MenuItem value="PASAPORTE">Pasaporte</MenuItem>
                                 </TextField>
-                            </Box>
+                            </Grid>
 
-                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 8" } }}>
+                            <Grid item xs={12} sm={8}>
                                 <TextField
                                     label="Número de documento"
                                     name="numero_documento"
@@ -317,49 +380,60 @@ export default function ModalInscripcionFlujo({
                                     error={Boolean(errors.numero_documento)}
                                     helperText={errors.numero_documento?.[0]}
                                 />
-                            </Box>
+                            </Grid>
+                        </Grid>
+                    </Paper>
 
-                            {/* Nombres y apellidos */}
-                            {[
-                                {
-                                    label: "Nombres",
-                                    name: "nombres",
-                                    required: true,
-                                    error: errors.nombres,
-                                },
-                                {
-                                    label: "Apellido paterno",
-                                    name: "apellido_paterno",
-                                    required: true,
-                                    error: errors.apellido_paterno,
-                                },
-                                {
-                                    label: "Apellido materno",
-                                    name: "apellido_materno",
-                                    required: true,
-                                    error: errors.apellido_materno,
-                                },
-                            ].map((field) => (
-                                <Box
-                                    key={field.name}
-                                    sx={{ gridColumn: { xs: "span 1", sm: "span 4" } }}
-                                >
-                                    <TextField
-                                        label={field.label}
-                                        name={field.name}
-                                        value={formPaso1[field.name]}
-                                        onChange={handlePaso1Change}
-                                        required={field.required}
-                                        fullWidth
-                                        size="small"
-                                        error={Boolean(field.error)}
-                                        helperText={field.error?.[0]}
-                                    />
-                                </Box>
-                            ))}
+                    {/* 3. Datos personales */}
+                    <Paper variant="outlined" sx={{ p: 2.5, mb: 2, borderRadius: 2 }}>
+                        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
+                            3. Datos personales
+                        </Typography>
 
-                            {/* Datos personales */}
-                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 4" } }}>
+                        <Grid container spacing={2}>
+                            <Grid item xs={12} sm={4}>
+                                <TextField
+                                    label="Nombres"
+                                    name="nombres"
+                                    value={formPaso1.nombres}
+                                    onChange={handlePaso1Change}
+                                    required
+                                    fullWidth
+                                    size="small"
+                                    error={Boolean(errors.nombres)}
+                                    helperText={errors.nombres?.[0]}
+                                />
+                            </Grid>
+
+                            <Grid item xs={12} sm={4}>
+                                <TextField
+                                    label="Apellido paterno"
+                                    name="apellido_paterno"
+                                    value={formPaso1.apellido_paterno}
+                                    onChange={handlePaso1Change}
+                                    required
+                                    fullWidth
+                                    size="small"
+                                    error={Boolean(errors.apellido_paterno)}
+                                    helperText={errors.apellido_paterno?.[0]}
+                                />
+                            </Grid>
+
+                            <Grid item xs={12} sm={4}>
+                                <TextField
+                                    label="Apellido materno"
+                                    name="apellido_materno"
+                                    value={formPaso1.apellido_materno}
+                                    onChange={handlePaso1Change}
+                                    required
+                                    fullWidth
+                                    size="small"
+                                    error={Boolean(errors.apellido_materno)}
+                                    helperText={errors.apellido_materno?.[0]}
+                                />
+                            </Grid>
+
+                            <Grid item xs={12} sm={4}>
                                 <TextField
                                     select
                                     label="Sexo"
@@ -372,9 +446,9 @@ export default function ModalInscripcionFlujo({
                                     <MenuItem value="M">Masculino</MenuItem>
                                     <MenuItem value="F">Femenino</MenuItem>
                                 </TextField>
-                            </Box>
+                            </Grid>
 
-                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 4" } }}>
+                            <Grid item xs={12} sm={4}>
                                 <TextField
                                     type="date"
                                     label="Fecha de nacimiento"
@@ -384,10 +458,12 @@ export default function ModalInscripcionFlujo({
                                     fullWidth
                                     size="small"
                                     InputLabelProps={{ shrink: true }}
+                                    error={Boolean(errors.fecha_nacimiento)}
+                                    helperText={errors.fecha_nacimiento?.[0]}
                                 />
-                            </Box>
+                            </Grid>
 
-                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 4" } }}>
+                            <Grid item xs={12} sm={4}>
                                 <TextField
                                     label="Celular"
                                     name="celular"
@@ -397,12 +473,20 @@ export default function ModalInscripcionFlujo({
                                     size="small"
                                     placeholder="Ej. 984512301"
                                 />
-                            </Box>
+                            </Grid>
+                        </Grid>
+                    </Paper>
 
-                            {/* Contacto */}
-                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 6" } }}>
+                    {/* 4. Datos de contacto */}
+                    <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
+                            4. Datos de contacto
+                        </Typography>
+
+                        <Grid container spacing={2}>
+                            <Grid item xs={12} sm={6}>
                                 <TextField
-                                    label="Correo electrónico personal"
+                                    label="Correo electrónico"
                                     name="email_personal"
                                     value={formPaso1.email_personal}
                                     onChange={handlePaso1Change}
@@ -410,9 +494,9 @@ export default function ModalInscripcionFlujo({
                                     size="small"
                                     placeholder="ejemplo@gmail.com"
                                 />
-                            </Box>
+                            </Grid>
 
-                            <Box sx={{ gridColumn: { xs: "span 1", sm: "span 6" } }}>
+                            <Grid item xs={12} sm={6}>
                                 <TextField
                                     label="Dirección / domicilio real"
                                     name="direccion"
@@ -422,127 +506,128 @@ export default function ModalInscripcionFlujo({
                                     size="small"
                                     placeholder="Av. o Jr., distrito"
                                 />
+                            </Grid>
+                        </Grid>
+                    </Paper>
+                </form>
+                    )}
+
+                    {/* PASO 2: Código de Tesorería Generado (DNI) */}
+                    {activeStep === 1 && postulacionCreada && (
+                        <Box sx={{ textAlign: 'center', py: 2 }}>
+                            <Box
+                                sx={{
+                                    width: 64,
+                                    height: 64,
+                                    borderRadius: '50%',
+                                    backgroundColor: THEME_COLORS.primaryLight,
+                                    color: THEME_COLORS.primary,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    mx: 'auto',
+                                    mb: 2,
+                                }}
+                            >
+                                <CreditCard size={34} />
                             </Box>
+
+                            <Typography variant="h6" fontWeight={800} gutterBottom>
+                                ¡Pre-inscripción Exitosa! Código de Tesorería Generado
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 500, mx: 'auto', mb: 3 }}>
+                                El postulante debe acercarse a Caja/Tesorería o efectuar su abono indicando su número de documento de identidad como código único de pago.
+                            </Typography>
+
+                            <Card
+                                elevation={0}
+                                sx={{
+                                    maxWidth: 450,
+                                    mx: 'auto',
+                                    border: `2px dashed ${THEME_COLORS.primary}`,
+                                    borderRadius: 3,
+                                    backgroundColor: '#f0f9ff',
+                                    p: 2,
+                                    mb: 3,
+                                }}
+                            >
+                                <CardContent sx={{ p: 1 }}>
+                                    <Typography variant="caption" sx={{ textTransform: 'uppercase', color: '#0369a1', fontWeight: 700 }}>
+                                        Código de Pago para Tesorería (DNI)
+                                    </Typography>
+                                    <Typography variant="h4" fontWeight={900} sx={{ color: '#0f172a', letterSpacing: 2, my: 1 }}>
+                                        {postulacionCreada.codigo_tesoreria || postulacionCreada.persona?.numero_documento}
+                                    </Typography>
+                                    <Divider sx={{ my: 1.5 }} />
+                                    <Grid container spacing={1} sx={{ textAlign: 'left', fontSize: 13 }}>
+                                        <Grid item xs={6} color="text.secondary">Postulante:</Grid>
+                                        <Grid item xs={6} fontWeight={600}>{postulacionCreada.persona?.nombre_completo}</Grid>
+                                        <Grid item xs={6} color="text.secondary">Concepto:</Grid>
+                                        <Grid item xs={6} fontWeight={600}>Derecho de Admisión 2026</Grid>
+                                        <Grid item xs={6} color="text.secondary">Monto a Abonar:</Grid>
+                                        <Grid item xs={6} fontWeight={800} color={THEME_COLORS.primary}>S/ 150.00</Grid>
+                                        <Grid item xs={6} color="text.secondary">Estado Actual:</Grid>
+                                        <Grid item xs={6}>
+                                            <Chip label="PENDIENTE DE PAGO" size="small" color="warning" sx={{ fontWeight: 700 }} />
+                                        </Grid>
+                                    </Grid>
+                                </CardContent>
+                            </Card>
                         </Box>
-                    </form>
-                )}
+                    )}
 
-                {/* PASO 2: Código de Tesorería Generado (DNI) */}
-                {activeStep === 1 && postulacionCreada && (
-                    <Box sx={{ textAlign: 'center', py: 2 }}>
-                        <Box
-                            sx={{
-                                width: 64,
-                                height: 64,
-                                borderRadius: '50%',
-                                backgroundColor: THEME_COLORS.primaryLight,
-                                color: THEME_COLORS.primary,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                mx: 'auto',
-                                mb: 2,
-                            }}
-                        >
-                            <CreditCard size={34} />
-                        </Box>
-
-                        <Typography variant="h6" fontWeight={800} gutterBottom>
-                            ¡Pre-inscripción Exitosa! Código de Tesorería Generado
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 500, mx: 'auto', mb: 3 }}>
-                            El postulante debe acercarse a Caja/Tesorería o efectuar su abono indicando su número de documento de identidad como código único de pago.
-                        </Typography>
-
-                        <Card
-                            elevation={0}
-                            sx={{
-                                maxWidth: 450,
-                                mx: 'auto',
-                                border: `2px dashed ${THEME_COLORS.primary}`,
-                                borderRadius: 3,
-                                backgroundColor: '#f0f9ff',
-                                p: 2,
-                                mb: 3,
-                            }}
-                        >
-                            <CardContent sx={{ p: 1 }}>
-                                <Typography variant="caption" sx={{ textTransform: 'uppercase', color: '#0369a1', fontWeight: 700 }}>
-                                    Código de Pago para Tesorería (DNI)
+                    {/* PASO 3: Retorno de Tesorería (Pagado/Válido) & Emisión de FUT */}
+                    {activeStep === 2 && postulacionCreada && (
+                        <form id="form-paso-3" onSubmit={handleConfirmarPago}>
+                            <Box sx={{ textAlign: 'center', mb: 3 }}>
+                                <Typography variant="h6" fontWeight={800}>
+                                    Validación y Retorno de Pago de Tesorería
                                 </Typography>
-                                <Typography variant="h4" fontWeight={900} sx={{ color: '#0f172a', letterSpacing: 2, my: 1 }}>
-                                    {postulacionCreada.codigo_tesoreria || postulacionCreada.persona?.numero_documento}
+                                <Typography variant="body2" color="text.secondary">
+                                    Ingrese el número de recibo o comprobante emitido por Tesorería para el código <strong>{postulacionCreada.codigo_tesoreria}</strong>. El sistema emitirá el número oficial de FUT.
                                 </Typography>
-                                <Divider sx={{ my: 1.5 }} />
-                                <Grid container spacing={1} sx={{ textAlign: 'left', fontSize: 13 }}>
-                                    <Grid item xs={6} color="text.secondary">Postulante:</Grid>
-                                    <Grid item xs={6} fontWeight={600}>{postulacionCreada.persona?.nombre_completo}</Grid>
-                                    <Grid item xs={6} color="text.secondary">Concepto:</Grid>
-                                    <Grid item xs={6} fontWeight={600}>Derecho de Admisión 2026</Grid>
-                                    <Grid item xs={6} color="text.secondary">Monto a Abonar:</Grid>
-                                    <Grid item xs={6} fontWeight={800} color={THEME_COLORS.primary}>S/ 150.00</Grid>
-                                    <Grid item xs={6} color="text.secondary">Estado Actual:</Grid>
-                                    <Grid item xs={6}>
-                                        <Chip label="PENDIENTE DE PAGO" size="small" color="warning" sx={{ fontWeight: 700 }} />
+                            </Box>
+
+                            <Paper elevation={0} sx={{ p: 2.5, border: '1px solid #e2e8f0', borderRadius: 2, maxWidth: 500, mx: 'auto' }}>
+                                <Grid container spacing={2}>
+                                    <Grid item xs={12}>
+                                        <TextField
+                                            label="N° de Recibo / Operación de Tesorería *"
+                                            name="comprobante_pago"
+                                            value={formPaso3.comprobante_pago}
+                                            onChange={handlePaso3Change}
+                                            required
+                                            fullWidth
+                                            size="small"
+                                            placeholder="Ej. REC-2026-0042 o 0984123"
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField
+                                            type="number"
+                                            label="Monto Abonado (S/)"
+                                            name="monto_pago"
+                                            value={formPaso3.monto_pago}
+                                            onChange={handlePaso3Change}
+                                            fullWidth
+                                            size="small"
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField
+                                            type="date"
+                                            label="Fecha de Pago"
+                                            name="fecha_pago"
+                                            value={formPaso3.fecha_pago}
+                                            onChange={handlePaso3Change}
+                                            fullWidth
+                                            size="small"
+                                            InputLabelProps={{ shrink: true }}
+                                        />
                                     </Grid>
                                 </Grid>
-                            </CardContent>
-                        </Card>
-                    </Box>
-                )}
-
-                {/* PASO 3: Retorno de Tesorería (Pagado/Válido) & Emisión de FUT */}
-                {activeStep === 2 && postulacionCreada && (
-                    <form id="form-paso-3" onSubmit={handleConfirmarPago}>
-                        <Box sx={{ textAlign: 'center', mb: 3 }}>
-                            <Typography variant="h6" fontWeight={800}>
-                                Validación y Retorno de Pago de Tesorería
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                Ingrese el número de recibo o comprobante emitido por Tesorería para el código <strong>{postulacionCreada.codigo_tesoreria}</strong>. El sistema emitirá el número oficial de FUT.
-                            </Typography>
-                        </Box>
-
-                        <Paper elevation={0} sx={{ p: 2.5, border: '1px solid #e2e8f0', borderRadius: 2, maxWidth: 500, mx: 'auto' }}>
-                            <Grid container spacing={2}>
-                                <Grid item xs={12}>
-                                    <TextField
-                                        label="N° de Recibo / Operación de Tesorería *"
-                                        name="comprobante_pago"
-                                        value={formPaso3.comprobante_pago}
-                                        onChange={handlePaso3Change}
-                                        required
-                                        fullWidth
-                                        size="small"
-                                        placeholder="Ej. REC-2026-0042 o 0984123"
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        type="number"
-                                        label="Monto Abonado (S/)"
-                                        name="monto_pago"
-                                        value={formPaso3.monto_pago}
-                                        onChange={handlePaso3Change}
-                                        fullWidth
-                                        size="small"
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        type="date"
-                                        label="Fecha de Pago"
-                                        name="fecha_pago"
-                                        value={formPaso3.fecha_pago}
-                                        onChange={handlePaso3Change}
-                                        fullWidth
-                                        size="small"
-                                        InputLabelProps={{ shrink: true }}
-                                    />
-                                </Grid>
-                            </Grid>
-                        </Paper>
-                    </form>
+                            </Paper>
+                        </form>
                 )}
 
                 {/* PASO 4: Expediente Escolar (Colegio Modular) y Requisitos */}
