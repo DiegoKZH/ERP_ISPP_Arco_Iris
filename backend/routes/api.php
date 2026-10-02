@@ -48,8 +48,11 @@ Route::middleware(['auth:sanctum'])->prefix('roles')->group(function () {
 // Admission Management (Módulo 08)
 Route::middleware(['auth:sanctum'])->prefix('admision')->group(function () {
     // Procesos
+    // Procesos (Convocatorias)
     Route::get('/procesos', [AdmisionProcesoController::class, 'index'])->middleware('permission:admision.procesos.ver');
+    Route::post('/procesos', [AdmisionProcesoController::class, 'store'])->middleware('permission:admision.procesos.crear');
     Route::get('/procesos/{proceso}', [AdmisionProcesoController::class, 'show'])->middleware('permission:admision.procesos.ver');
+    Route::patch('/procesos/{proceso}/toggle-estado', [AdmisionProcesoController::class, 'toggleEstado'])->middleware('permission:admision.procesos.editar');
 
     // Postulaciones y Flujo Oficial de Admisión
     Route::get('/postulaciones', [AdmisionPostulacionController::class, 'index'])->middleware('permission:admision.postulantes.ver');
@@ -66,6 +69,13 @@ Route::middleware(['auth:sanctum'])->prefix('admision')->group(function () {
     Route::post('/postulaciones/{postulacion}/calificar', [AdmisionResultadoController::class, 'calificar'])->middleware('permission:admision.postulantes.evaluar');
     Route::post('/postulaciones/{postulacion}/emitir-constancia', [AdmisionResultadoController::class, 'emitirConstancia'])->middleware('permission:admision.constancias.emitir');
     Route::post('/postulaciones/{postulacion}/ratificar-matricula', [AdmisionResultadoController::class, 'ratificarMatricula'])->middleware('permission:admision.constancias.emitir');
+});
+
+// Tesorería & Caja (Módulo de Pagos y Emisión de FUT)
+Route::middleware(['auth:sanctum'])->prefix('tesoreria')->group(function () {
+    Route::get('/pagos-admision', [\App\Http\Controllers\Api\TesoreriaPagoController::class, 'index'])->middleware('permission:admision.postulantes.ver|admision.postulantes.inscribir');
+    Route::get('/pagos-admision/consultar/{dni}', [\App\Http\Controllers\Api\TesoreriaPagoController::class, 'consultarDni'])->middleware('permission:admision.postulantes.ver|admision.postulantes.inscribir');
+    Route::post('/pagos-admision/{postulacion}/registrar-pago', [\App\Http\Controllers\Api\TesoreriaPagoController::class, 'registrarPago'])->middleware('permission:admision.postulantes.inscribir');
 });
 
 // Testing & Verification Protected Routes

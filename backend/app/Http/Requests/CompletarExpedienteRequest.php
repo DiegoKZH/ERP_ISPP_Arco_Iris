@@ -14,6 +14,14 @@ class CompletarExpedienteRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // Datos personales complementarios (Fase posterior al pago y FUT)
+            'fecha_nacimiento' => ['nullable', 'date'],
+            'sexo' => ['nullable', 'in:M,F'],
+            'celular' => ['nullable', 'string', 'max:20'],
+            'email_personal' => ['nullable', 'email', 'max:150'],
+            'direccion' => ['nullable', 'string', 'max:255'],
+
+            // Procedencia escolar
             'colegio_fin_secundaria' => ['required', 'string', 'max:200'],
             'codigo_modular_colegio' => ['required', 'string', 'max:10'],
             'anio_egreso_colegio' => ['required', 'integer', 'min:1950', 'max:' . (date('Y') + 1)],
@@ -21,6 +29,8 @@ class CompletarExpedienteRequest extends FormRequest
             'colegio_departamento' => ['nullable', 'string', 'max:50'],
             'colegio_provincia' => ['nullable', 'string', 'max:50'],
             'colegio_distrito' => ['nullable', 'string', 'max:50'],
+
+            // Expediente documentario
             'foto_url' => ['nullable', 'string', 'max:255'],
             'tiene_copia_dni_color' => ['required', 'boolean'],
             'tiene_partida_nacimiento' => ['required', 'boolean'],

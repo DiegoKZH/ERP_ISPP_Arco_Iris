@@ -265,89 +265,91 @@ export default function ModalInscripcionFlujo({
                     {/* 1. Programa y modalidad */}
                     <Paper variant="outlined" sx={{ p: 2.5, mb: 2, borderRadius: 2 }}>
                         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
-                            1. Programa y modalidad
+                            1. Seleccione su programa y modalidad
                         </Typography>
 
-                        
-                    <TextField
-                        select
-                        label="Programa de estudios y modalidad de admisión"
-                        name="admision_programa_ofertado_id"
-                        value={formPaso1.admision_programa_ofertado_id}
-                        onChange={handlePaso1Change}
-                        required
-                        fullWidth
-                        size="small"
-                        error={Boolean(errors.admision_programa_ofertado_id)}
-                        helperText={errors.admision_programa_ofertado_id?.[0]}
+                        <TextField
+                            select
+                            label="Programa de estudios y modalidad de admisión"
+                            name="admision_programa_ofertado_id"
+                            value={formPaso1.admision_programa_ofertado_id}
+                            onChange={handlePaso1Change}
+                            required
+                            fullWidth
+                            size="small"
+                            error={Boolean(errors.admision_programa_ofertado_id)}
+                            helperText={errors.admision_programa_ofertado_id?.[0]}
 
-                        SelectProps={{
-                            displayEmpty: true,
-                            MenuProps: {
-                                PaperProps: {
-                                    sx: {
-                                        maxHeight: 320,
-                                        borderRadius: 2,
-                                        mt: 0.5,
-                                        boxShadow: 3,
+                            SelectProps={{
+                                displayEmpty: true,
+                                MenuProps: {
+                                    PaperProps: {
+                                        sx: {
+                                            maxHeight: 320,
+                                            borderRadius: 2,
+                                            mt: 0.5,
+                                            boxShadow: 3,
+                                        },
                                     },
                                 },
-                            },
-                        }}
+                            }}
 
-                        sx={{
-                            '& .MuiSelect-select': {
-                                py: 1.2,
-                                minHeight: '42px',
-                            },
-                        }}
-                    >
-                        {(procesoDetalle?.programas_ofertados ?? []).length > 0 ? (
-                            procesoDetalle.programas_ofertados.map((programaOfertado) => (
-                                <MenuItem
-                                    key={programaOfertado.id}
-                                    value={programaOfertado.id}
-                                    sx={{
-                                        py: 1.5,
-                                        whiteSpace: 'normal',
-                                        alignItems: 'flex-start',
-                                        borderBottom: '1px solid',
-                                        borderColor: 'divider',
-                                    }}
-                                >
-                                    <Box sx={{ width: '100%' }}>
-                                        <Typography
-                                            variant="body2"
-                                            fontWeight={600}
-                                            color="text.primary"
-                                        >
-                                            {programaOfertado.programa}
-                                            {' — '}
-                                            {programaOfertado.modalidad}
-                                        </Typography>
+                            sx={{
+                                '& .MuiSelect-select': {
+                                    py: 1.2,
+                                    minHeight: '42px',
+                                },
+                            }}
+                        >
+                            {(procesoDetalle?.programas_ofertados ?? []).length > 0 ? (
+                                procesoDetalle.programas_ofertados.map((programaOfertado) => (
+                                    <MenuItem
+                                        key={programaOfertado.id}
+                                        value={programaOfertado.id}
+                                        sx={{
+                                            py: 1.5,
+                                            whiteSpace: 'normal',
+                                            alignItems: 'flex-start',
+                                            borderBottom: '1px solid',
+                                            borderColor: 'divider',
+                                        }}
+                                    >
+                                        <Box sx={{ width: '100%' }}>
+                                            <Typography
+                                                variant="body2"
+                                                fontWeight={600}
+                                                color="text.primary"
+                                            >
+                                                {programaOfertado.programa}
+                                                {' — '}
+                                                {programaOfertado.modalidad}
+                                            </Typography>
 
-                                        <Typography
-                                            variant="caption"
-                                            color="text.secondary"
-                                            sx={{ display: 'block', mt: 0.5 }}
-                                        >
-                                            {programaOfertado.vacantes} vacantes disponibles
-                                        </Typography>
-                                    </Box>
+                                            <Typography
+                                                variant="caption"
+                                                color="text.secondary"
+                                                sx={{ display: 'block', mt: 0.5 }}
+                                            >
+                                                {programaOfertado.vacantes} vacantes disponibles
+                                            </Typography>
+                                        </Box>
+                                    </MenuItem>
+                                ))
+                            ) : (
+                                <MenuItem disabled>
+                                    No hay programas ofertados disponibles
                                 </MenuItem>
-                            ))
-                        ) : (
-                            <MenuItem disabled>
-                                No hay programas ofertados disponibles
-                            </MenuItem>
-                        )}
-                    </TextField>
+                            )}
+                        </TextField>
                     </Paper>
 
                     {/* 2. Documento de identidad */}
                     <Paper variant="outlined" sx={{ p: 2.5, mb: 2, borderRadius: 2 }}>
                         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
-                            2. Documento de identidad
+                            2. REGISTRO DEL POSTULANTE
+                        </Typography>
+                        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
+                            Documento de identidad
                         </Typography>
 
                         <Grid container spacing={2}>
@@ -387,7 +389,7 @@ export default function ModalInscripcionFlujo({
                     {/* 3. Datos personales */}
                     <Paper variant="outlined" sx={{ p: 2.5, mb: 2, borderRadius: 2 }}>
                         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
-                            3. Datos personales
+                            Datos personales
                         </Typography>
 
                         <Grid container spacing={2}>
@@ -480,7 +482,7 @@ export default function ModalInscripcionFlujo({
                     {/* 4. Datos de contacto */}
                     <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
-                            4. Datos de contacto
+                            Datos de contacto
                         </Typography>
 
                         <Grid container spacing={2}>
