@@ -4,7 +4,7 @@
 |----------|---------|
 | **Plan Asociado** | `docs/specs/convocatorias-tesoreria-flujo-admision.plan.md` |
 | **Fecha** | 2026-10-01 |
-| **Estado General** | En Progreso |
+| **Estado General** | Completado |
 
 ---
 
@@ -57,10 +57,22 @@
   - [x] Compilar frontend con `npm run build` sin errores de empaquetado.
 
 - [x] **Tarea 7: Rediseño de Menú Lateral, Pantalla Dedicada de Inscripción y Reanudación por DNI**
-  - [x] Rediseño de `DashboardLayout.jsx` con fondo azul oscuro (`#0f172a`), barra superior a juego y menú lateral colapsable con acordeones para `Usuarios y Roles` y `Admisión`.
-  - [x] Creación de `InscripcionPostulantePage.jsx` como pantalla completa dedicada (`/admission/inscribir`) con Stepper de 6 pasos (Datos, Foto, Especialidad, Colegio, Documentos, Pago) exacto al diseño requerido.
+  - [x] Rediseño de `DashboardLayout.jsx` con fondo azul oscuro (`#0a111a`), barra superior a juego y menú lateral colapsable con acordeones para `Usuarios y Roles` y `Admisión`.
+  - [x] Creación de `InscripcionPostulantePage.jsx` como pantalla completa dedicada (`/admission/inscribir`) con Stepper de 6 pasos (Datos, Foto, Especialidad, Colegio, Documentos, Pago).
   - [x] Eliminación del selector obligatorio de programa pedagógico en el Paso 1, permitiendo inscripción general y selección de especialidad en el Paso 3.
   - [x] Solución al percance de reanudación: endpoint `GET /api/admision/postulaciones/consultar-dni/{dni}` y botón RENIEC para precargar y continuar sin error de clave única.
-  - [x] Botón "Continuar Inscripción" en la tabla del Padrón de Postulantes para postulaciones en curso (`PENDIENTE_PAGO` o `PAGO_VALIDADO`).
-  - [x] Suite de pruebas expandida: 45/45 tests unitarios y de integración pasando (`ConvocatoriasYTesoreriaTest` con 9 tests y 52 aserciones).
-  - [x] Compilación de producción Vite (`npx vite build`) exitosa (0 errores).
+  - [x] Botón "Continuar Inscripción" en la tabla del Padrón de Postulantes para postulaciones en curso.
+
+- [x] **Tarea 8: Pantallas Independientes por Menú, Eliminación con Reciclaje de Códigos, Subida de Fotos y Theme Modular**
+  - [x] Separación de todas las subsecciones de Admisión en pantallas independientes y exclusivas desde el menú lateral:
+    - `/admission` -> `PadronPostulantesPage.jsx` (Padrón Oficial de Postulantes)
+    - `/admission/inscribir` -> `InscripcionPostulantePage.jsx` (Inscripción de Postulantes)
+    - `/admission/convocatorias` -> `ConvocatoriasPage.jsx` (Gestión de Convocatorias)
+    - `/admission/vacantes` -> `VacantesOfertadasPage.jsx` (Vacantes Ofertadas)
+    - `/admission/resultados` -> `CuadroMeritoPage.jsx` (Cuadro de Mérito y Resultados)
+  - [x] Backend: Implementar eliminación de postulantes (`DELETE /api/admision/postulaciones/{id}`) con algoritmo de reciclaje de correlativos (`POST-...` y `FUT-...`) para reutilizar cupos liberados.
+  - [x] Frontend: Modal de confirmación para eliminar postulante en el Padrón con liberación de vacante/código.
+  - [x] Frontend: Carga real de fotografía desde el equipo mediante `FileReader` e input de archivo con vista previa inmediata.
+  - [x] Frontend: Incorporación de selector `tipo_documento` (DNI, Carné de Extranjería, Pasaporte) con botón de comprobación RENIEC.
+  - [x] Theme: Centralización estricta de colores en `frontend/src/theme/colors.js` con azul oscuro `#0a111a` / `#101c2a` aplicado uniformemente.
+  - [x] Verificación: 46/46 tests en verde (195 assertions) y Vite build exitoso (0 errores).

@@ -40,10 +40,9 @@ import {
     FileSpreadsheet,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { THEME_COLORS } from '../theme/colors';
 
 const DRAWER_WIDTH = 250;
-const DARK_NAVY = '#0f172a'; // Azul oscuro institucional
-const DARK_NAVY_SURFACE = '#1e293b'; // Superficie ligeramente elevada
 
 export default function DashboardLayout() {
     const { user, logout, hasRole } = useAuth();
@@ -94,7 +93,7 @@ export default function DashboardLayout() {
         logout();
     };
 
-    // Estructura de navegación jerárquica con acordeones
+    // Estructura de navegación jerárquica con acordeones y rutas independientes
     const navigationGroups = [
         {
             type: 'single',
@@ -133,7 +132,6 @@ export default function DashboardLayout() {
                     text: 'Padrón de Postulantes',
                     icon: <FileSpreadsheet size={16} />,
                     path: '/admission',
-                    tabKey: 'padron',
                 },
                 {
                     text: 'Inscripción de Postulantes',
@@ -143,20 +141,17 @@ export default function DashboardLayout() {
                 {
                     text: 'Gestión de Convocatorias',
                     icon: <Calendar size={16} />,
-                    path: '/admission?tab=convocatorias',
-                    tabKey: 'convocatorias',
+                    path: '/admission/convocatorias',
                 },
                 {
                     text: 'Vacantes Ofertadas',
                     icon: <BookOpen size={16} />,
-                    path: '/admission?tab=vacantes',
-                    tabKey: 'vacantes',
+                    path: '/admission/vacantes',
                 },
                 {
                     text: 'Cuadro de Mérito y Resultados',
                     icon: <BarChart3 size={16} />,
-                    path: '/admission?tab=resultados',
-                    tabKey: 'resultados',
+                    path: '/admission/resultados',
                 },
             ],
         },
@@ -170,22 +165,13 @@ export default function DashboardLayout() {
     ];
 
     const isCurrentActive = (item) => {
-        if (item.path === '/') return location.pathname === '/';
-        if (item.path === '/admission/inscribir') return location.pathname === '/admission/inscribir';
-        if (item.tabKey) {
-            const currentTab = new URLSearchParams(location.search).get('tab');
-            if (item.tabKey === 'padron') {
-                return location.pathname === '/admission' && (!currentTab || currentTab === 'padron');
-            }
-            return location.pathname === '/admission' && currentTab === item.tabKey;
-        }
         return location.pathname === item.path;
     };
 
     const drawerContent = (
-        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: DARK_NAVY, color: '#f8fafc' }}>
+        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: THEME_COLORS.darkNavy, color: '#f8fafc' }}>
             {/* Header del Drawer */}
-            <Toolbar sx={{ px: 2, display: 'flex', alignItems: 'center', gap: 1.5, borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+            <Toolbar sx={{ px: 2, display: 'flex', alignItems: 'center', gap: 1.5, borderBottom: `1px solid ${THEME_COLORS.darkNavyBorder}` }}>
                 <Box
                     sx={{
                         width: 38,
@@ -211,7 +197,7 @@ export default function DashboardLayout() {
             </Toolbar>
 
             {/* Perfil del Usuario Compacto */}
-            <Box sx={{ p: 1.5, m: 1.5, bgcolor: DARK_NAVY_SURFACE, borderRadius: 2, border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+            <Box sx={{ p: 1.5, m: 1.5, bgcolor: THEME_COLORS.darkNavySurface, borderRadius: 2, border: `1px solid ${THEME_COLORS.darkNavyBorder}` }}>
                 <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', fontSize: '0.68rem', textTransform: 'uppercase', fontWeight: 700 }}>
                     Usuario Conectado
                 </Typography>
@@ -386,9 +372,9 @@ export default function DashboardLayout() {
                 sx={{
                     width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
                     ml: { md: `${DRAWER_WIDTH}px` },
-                    bgcolor: DARK_NAVY,
+                    bgcolor: THEME_COLORS.darkNavy,
                     color: '#ffffff',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderBottom: `1px solid ${THEME_COLORS.darkNavyBorder}`,
                 }}
             >
                 <Toolbar sx={{ minHeight: '56px !important', px: 2.5 }}>

@@ -226,9 +226,9 @@ class ConvocatoriasYTesoreriaTest extends TestCase
 
         $this->assertDatabaseHas('personas', [
             'numero_documento' => '78945612',
-            'nombres' => 'Rosa Elena',
-            'apellido_paterno' => 'Castillo',
-            'apellido_materno' => 'Paredes',
+            'nombres' => 'ROSA ELENA',
+            'apellido_paterno' => 'CASTILLO',
+            'apellido_materno' => 'PAREDES',
         ]);
     }
 
@@ -368,7 +368,7 @@ class ConvocatoriasYTesoreriaTest extends TestCase
         $res->assertStatus(200)
             ->assertJsonPath('encontrado', true)
             ->assertJsonPath('data.codigo_tesoreria', '71223344')
-            ->assertJsonPath('persona.nombres', 'Rosa Elena');
+            ->assertJsonPath('persona.nombres', 'ROSA ELENA');
     }
 
     public function test_pre_inscribir_con_dni_existente_reanuda_sin_error_unique(): void
@@ -417,5 +417,63 @@ class ConvocatoriasYTesoreriaTest extends TestCase
         $postulacion = AdmisionPostulacion::where('codigo_tesoreria', '74455667')->first();
         $this->assertNotNull($postulacion);
         $this->assertNotNull($postulacion->admision_programa_ofertado_id);
+    }
+
+    public function test_puede_eliminar_postulante_y_reutilizar_su_codigo_y_fut(): void
+    {
+        // 1. Crear postulante
+        $payload = [
+            'admision_proceso_id' => $this->procesoAbierto->id,
+            'tipo_documento' => 'DNI',
+            'numero_documento' => '71112233',
+            'nombres' => 'Postulante Para',
+            'apellido_paterno' => 'Eliminar',
+            'apellido_materno' => 'Test',
+        ];
+
+        $res1 = $this->actingAs($this->adminUser)
+            ->postJson('/api/admision/postulaciones/pre-inscribir', $payload);
+        $res1->assertStatus(201);
+        $postulacionId = $res1->json('data.id');
+        $codigoLiberado = $res1->json('data.codigo_postulante');
+
+        // 2. Validar pago para generar FUT
+        $resPago = $this->actingAs($this->adminUser)
+            ->postJson("/api/admision/postulaciones/{$postulacionId}/validar-pago", [
+                'comprobante_pago' => 'REC-DEL-01',
+                'monto_pago' => 150.00,
+            ]);
+        $resPago->assertStatus(200);
+        $futLiberado = $resPago->json('numero_fut');
+
+        // 3. Eliminar postulante
+        $resDelete = $this->actingAs($this->adminUser)
+            ->deleteJson("/api/admision/postulaciones/{$postulacionId}");
+        $resDelete->assertStatus(200);
+
+        // 4. Crear nuevo postulante y comprobar que toma el correlativo liberado
+        $payloadNuevo = [
+            'admision_proceso_id' => $this->procesoAbierto->id,
+            'tipo_documento' => 'DNI',
+            'numero_documento' => '79998888',
+            'nombres' => 'Nuevo Postulante',
+            'apellido_paterno' => 'QueToma',
+            'apellido_materno' => 'ElCodigo',
+        ];
+
+        $resNuevo = $this->actingAs($this->adminUser)
+            ->postJson('/api/admision/postulaciones/pre-inscribir', $payloadNuevo);
+        $resNuevo->assertStatus(201);
+        $this->assertEquals($codigoLiberado, $resNuevo->json('data.codigo_postulante'));
+
+        // 5. Validar pago del nuevo postulante y comprobar que reutiliza el FUT liberado
+        $nuevoId = $resNuevo->json('data.id');
+        $resPagoNuevo = $this->actingAs($this->adminUser)
+            ->postJson("/api/admision/postulaciones/{$nuevoId}/validar-pago", [
+                'comprobante_pago' => 'REC-NUEVO-02',
+                'monto_pago' => 150.00,
+            ]);
+        $resPagoNuevo->assertStatus(200);
+        $this->assertEquals($futLiberado, $resPagoNuevo->json('numero_fut'));
     }
 }

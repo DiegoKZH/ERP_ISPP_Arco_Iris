@@ -25,7 +25,7 @@ class PreInscribirPostulacionRequest extends FormRequest
 
             // PROGRAMAs OFERTADOs
             'admision_programa_ofertado_id' => [
-                'required', 
+                'nullable', 
                 'integer',
                 'exists:admision_programas_ofertados,id'
             ],

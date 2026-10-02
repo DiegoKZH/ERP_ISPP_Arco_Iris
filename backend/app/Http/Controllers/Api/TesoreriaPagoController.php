@@ -115,10 +115,20 @@ class TesoreriaPagoController extends Controller
         DB::transaction(function () use ($postulacion, $validated) {
             $year = date('Y');
 
-            // Habilitar y generar número de FUT si no existe
+            // Habilitar y generar número de FUT reutilizando correlativos liberados
             if (!$postulacion->numero_fut) {
-                $countFut = AdmisionPostulacion::whereNotNull('numero_fut')->count() + 1;
-                $postulacion->numero_fut = sprintf('FUT-%s-%04d', $year, $countFut);
+                $prefixFut = sprintf('FUT-%s-', $year);
+                $existingFuts = AdmisionPostulacion::whereNotNull('numero_fut')
+                    ->pluck('numero_fut')
+                    ->map(fn($f) => (int) str_replace($prefixFut, '', $f))
+                    ->filter()
+                    ->toArray();
+
+                $nextFutNum = 1;
+                while (in_array($nextFutNum, $existingFuts)) {
+                    $nextFutNum++;
+                }
+                $postulacion->numero_fut = sprintf('%s%04d', $prefixFut, $nextFutNum);
                 $postulacion->fecha_emision_fut = now();
             }
 

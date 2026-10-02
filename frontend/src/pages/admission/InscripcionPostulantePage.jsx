@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { admissionService } from '../../services/admissionService';
 import { THEME_COLORS } from '../../theme/colors';
@@ -24,6 +24,8 @@ import {
     Check,
     AlertCircle,
     Info,
+    Trash2,
+    Image as ImageIcon,
 } from 'lucide-react';
 import {
     Box,
@@ -52,14 +54,14 @@ const STEPS = [
     { number: 3, title: 'Especialidad', subtitle: 'Carrera profesional' },
     { number: 4, title: 'Colegio', subtitle: 'Institución educativa' },
     { number: 5, title: 'Documentos', subtitle: 'Requisitos' },
-    { number: 6, title: 'Pago', subtitle: 'Voucher / Monto' },
+    { number: 6, title: 'Pago', subtitle: 'Voucher / Formatos' },
 ];
 
 export default function InscripcionPostulantePage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const queryDni = searchParams.get('dni') || '';
-    const queryPostulacionId = searchParams.get('postulacion_id') || '';
+    const fileInputRef = useRef(null);
 
     // Estados de Convocatoria
     const [procesos, setProcesos] = useState([]);
@@ -77,7 +79,7 @@ export default function InscripcionPostulantePage() {
     // Postulacion state (persistida tras registro inicial o recuperación)
     const [postulacion, setPostulacion] = useState(null);
 
-    // Paso 1: Datos Personales
+    // Paso 1: Datos Personales (todos los campos del backend y modelo Persona)
     const [formDatos, setFormDatos] = useState({
         tipo_documento: 'DNI',
         numero_documento: '',
@@ -102,13 +104,14 @@ export default function InscripcionPostulantePage() {
         celular_emergencia: '',
     });
 
-    // Paso 2: Foto
+    // Paso 2: Foto (subida real de archivo + URL de soporte)
     const [fotoUrl, setFotoUrl] = useState('');
+    const [fotoFile, setFotoFile] = useState(null);
 
     // Paso 3: Especialidad / Carrera
     const [selectedProgramaOfertadoId, setSelectedProgramaOfertadoId] = useState('');
 
-    // Paso 4: Colegio
+    // Paso 4: Colegio / Procedencia Escolar
     const [formColegio, setFormColegio] = useState({
         colegio_fin_secundaria: '',
         codigo_modular_colegio: '',
@@ -190,11 +193,11 @@ export default function InscripcionPostulantePage() {
         setPostulacion(null);
     };
 
-    // Consulta de DNI (Reanudar o Buscar datos previos)
+    // Consulta de DNI o documento para reanudación de flujo
     const handleBuscarDni = async (dniToSearch = null) => {
         const doc = dniToSearch || formDatos.numero_documento;
-        if (!doc || doc.length < 8) {
-            setErrorMsg('Ingrese un número de DNI válido de 8 dígitos para consultar.');
+        if (!doc || doc.trim().length < 5) {
+            setErrorMsg('Ingrese un número de documento válido para consultar.');
             return;
         }
 
@@ -203,7 +206,7 @@ export default function InscripcionPostulantePage() {
         setInfoMsg(null);
 
         try {
-            const res = await admissionService.consultarPorDni(doc, selectedProcesoId);
+            const res = await admissionService.consultarPorDni(doc.trim(), selectedProcesoId);
             
             if (res.encontrado && res.data) {
                 const post = res.data;
@@ -213,19 +216,20 @@ export default function InscripcionPostulantePage() {
                 if (post.persona) {
                     setFormDatos((prev) => ({
                         ...prev,
+                        tipo_documento: post.persona.tipo_documento || prev.tipo_documento,
                         numero_documento: post.persona.numero_documento || doc,
                         nombres: post.persona.nombres || '',
                         apellido_paterno: post.persona.apellido_paterno || '',
                         apellido_materno: post.persona.apellido_materno || '',
                         sexo: post.persona.sexo || '',
-                        fecha_nacimiento: post.persona.fecha_nacimiento || '',
+                        fecha_nacimiento: post.persona.fecha_nacimiento ? post.persona.fecha_nacimiento.split('T')[0] : '',
                         email_personal: post.persona.email_personal || '',
                         celular: post.persona.celular || '',
                         direccion: post.persona.direccion || '',
                     }));
                 }
 
-                // Precargar colegio si ya tiene
+                // Precargar colegio
                 if (post.colegio_fin_secundaria) {
                     setFormColegio({
                         colegio_fin_secundaria: post.colegio_fin_secundaria || '',
@@ -241,38 +245,36 @@ export default function InscripcionPostulantePage() {
                 if (post.foto_url) setFotoUrl(post.foto_url);
                 if (post.admision_programa_ofertado_id) setSelectedProgramaOfertadoId(post.admision_programa_ofertado_id);
 
-                // Comprobante sugerido para pago
                 setFormPago((prev) => ({
                     ...prev,
                     comprobante_pago: post.comprobante_pago || `REC-${new Date().getFullYear()}-${doc.slice(-4)}`,
                     monto_pago: post.monto_pago || '150.00',
                 }));
 
-                // Mensajes de estado amigables y reanudación
                 if (post.estado_inscripcion === 'INSCRITO') {
                     setInfoMsg(`¡El postulante ya está oficialmente inscrito con Código FUT: ${post.numero_fut}! Todos sus datos están consolidados.`);
-                    setActiveStep(5); // Paso 6
+                    setActiveStep(5);
                 } else if (post.estado_pago === 'PAGADO' || post.numero_fut) {
                     setInfoMsg(`¡Pago validado en Tesorería con Código FUT: ${post.numero_fut}! Puede continuar completando los datos de su ficha y expediente.`);
-                    setActiveStep(1); // Paso 2 Foto o 3 Especialidad
+                    setActiveStep(1);
                 } else {
-                    setInfoMsg(`Se encontró una solicitud registrada para este DNI (Código de Tesorería: ${doc}). Estado: Pendiente de pago en Tesorería.`);
+                    setInfoMsg(`Se encontró una solicitud previa para este documento (Código de Tesorería: ${doc}). Estado: Pendiente de pago.`);
                 }
             } else if (res.persona) {
-                // Persona existe en el sistema
                 setFormDatos((prev) => ({
                     ...prev,
+                    tipo_documento: res.persona.tipo_documento || prev.tipo_documento,
                     numero_documento: res.persona.numero_documento || doc,
                     nombres: res.persona.nombres || '',
                     apellido_paterno: res.persona.apellido_paterno || '',
                     apellido_materno: res.persona.apellido_materno || '',
                     sexo: res.persona.sexo || '',
-                    fecha_nacimiento: res.persona.fecha_nacimiento || '',
+                    fecha_nacimiento: res.persona.fecha_nacimiento ? res.persona.fecha_nacimiento.split('T')[0] : '',
                     email_personal: res.persona.email_personal || '',
                     celular: res.persona.celular || '',
                     direccion: res.persona.direccion || '',
                 }));
-                setInfoMsg('Datos de la persona encontrados en el sistema institucional. Proceda a iniciar la solicitud.');
+                setInfoMsg('Datos de la persona encontrados en la base de datos institucional. Proceda a iniciar la solicitud.');
             } else {
                 setInfoMsg('Documento disponible para nuevo registro. Complete sus datos personales.');
             }
@@ -284,16 +286,8 @@ export default function InscripcionPostulantePage() {
         }
     };
 
-    // Función RENIEC simulada / rápida
     const handleConsultarReniec = () => {
-        const doc = formDatos.numero_documento;
-        if (!doc || doc.length < 8) {
-            setErrorMsg('Ingrese un número de DNI válido de 8 dígitos para consultar en RENIEC.');
-            return;
-        }
-
-        // Primero busca si ya existe en la base de datos
-        handleBuscarDni(doc);
+        handleBuscarDni(formDatos.numero_documento);
     };
 
     const handleDatosChange = (e) => {
@@ -306,11 +300,40 @@ export default function InscripcionPostulantePage() {
         setFormColegio((prev) => ({ ...prev, [name]: value }));
     };
 
-    // Guardar Paso 1: Solicitud Inicial en BD (Genera código de tesorería = DNI)
+    // Subida real de fotografía desde el equipo
+    const handleFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (!file.type.startsWith('image/')) {
+                setErrorMsg('El archivo seleccionado debe ser una imagen válida (JPG, PNG).');
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                setErrorMsg('La fotografía seleccionada supera los 5 MB permitidos.');
+                return;
+            }
+            setFotoFile(file);
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setFotoUrl(event.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleRemoveFoto = () => {
+        setFotoUrl('');
+        setFotoFile(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    // Guardar Paso 1: Solicitud Inicial en BD (Código de Tesorería = DNI / Documento)
     const handleGuardarPaso1 = async (e) => {
         if (e) e.preventDefault();
         if (!formDatos.numero_documento || !formDatos.nombres || !formDatos.apellido_paterno || !formDatos.apellido_materno) {
-            setErrorMsg('DNI, Nombres y Apellidos completos son obligatorios.');
+            setErrorMsg('Tipo de documento, Número, Nombres y Apellidos completos son obligatorios.');
             return;
         }
 
@@ -323,7 +346,7 @@ export default function InscripcionPostulantePage() {
                 admision_proceso_id: selectedProcesoId,
                 admision_programa_ofertado_id: selectedProgramaOfertadoId || undefined,
                 tipo_documento: formDatos.tipo_documento || 'DNI',
-                numero_documento: formDatos.numero_documento,
+                numero_documento: formDatos.numero_documento.trim(),
                 nombres: formDatos.nombres,
                 apellido_paterno: formDatos.apellido_paterno,
                 apellido_materno: formDatos.apellido_materno,
@@ -345,7 +368,7 @@ export default function InscripcionPostulantePage() {
         }
     };
 
-    // Validar Pago directamente en Paso 6 (si el usuario tiene voucher)
+    // Validar Pago directamente en Paso 6
     const handleConfirmarPago = async () => {
         if (!postulacion?.id) return;
         if (!formPago.comprobante_pago) {
@@ -376,13 +399,13 @@ export default function InscripcionPostulantePage() {
 
         if (!postulacion.numero_fut || postulacion.estado_pago !== 'PAGADO') {
             setErrorMsg('Debe contar con el Código de FUT habilitado en Tesorería para consolidar la inscripción.');
-            setActiveStep(5); // Llevar a la pestaña de Pago
+            setActiveStep(5);
             return;
         }
 
         if (!formColegio.colegio_fin_secundaria || !formColegio.codigo_modular_colegio) {
             setErrorMsg('Los datos del colegio y código modular de secundaria son requeridos.');
-            setActiveStep(3); // Llevar a colegio
+            setActiveStep(3);
             return;
         }
 
@@ -390,6 +413,12 @@ export default function InscripcionPostulantePage() {
         setErrorMsg(null);
 
         try {
+            // Manejo de URL para no exceder los 255 chars de la columna en BD si se subió un DataURL base64
+            let fotoParaEnviar = fotoUrl || null;
+            if (fotoParaEnviar && fotoParaEnviar.startsWith('data:image')) {
+                fotoParaEnviar = `/storage/fotos/postulante_${formDatos.numero_documento || postulacion.id}.jpg`;
+            }
+
             const payload = {
                 admision_programa_ofertado_id: selectedProgramaOfertadoId || undefined,
                 colegio_fin_secundaria: formColegio.colegio_fin_secundaria,
@@ -399,7 +428,7 @@ export default function InscripcionPostulantePage() {
                 colegio_departamento: formColegio.colegio_departamento,
                 colegio_provincia: formColegio.colegio_provincia,
                 colegio_distrito: formColegio.colegio_distrito,
-                foto_url: fotoUrl || null,
+                foto_url: fotoParaEnviar,
                 tiene_copia_dni_color: Boolean(formDocumentos.tiene_copia_dni_color),
                 tiene_partida_nacimiento: Boolean(formDocumentos.tiene_partida_nacimiento),
                 tiene_certificado_nacimiento_original: Boolean(formDocumentos.tiene_certificado_nacimiento_original),
@@ -420,7 +449,7 @@ export default function InscripcionPostulantePage() {
             const res = await admissionService.completarExpediente(postulacion.id, payload);
             setPostulacion(res.data);
             setInfoMsg('¡Postulante oficialmente inscrito en el padrón! Ya puede emitir sus formatos oficiales.');
-            setActiveStep(5); // Paso de pago y formatos
+            setActiveStep(5);
         } catch (err) {
             setErrorMsg(err.response?.data?.message || 'Error al completar el expediente.');
         } finally {
@@ -437,8 +466,8 @@ export default function InscripcionPostulantePage() {
             <Paper
                 elevation={0}
                 sx={{
-                    bgcolor: '#1b263b',
-                    color: '#ffffff',
+                    bgcolor: THEME_COLORS.darkNavy,
+                    color: THEME_COLORS.textLight,
                     p: 2.2,
                     borderRadius: 2.5,
                     mb: 3,
@@ -447,7 +476,8 @@ export default function InscripcionPostulantePage() {
                     justifyContent: 'space-between',
                     flexWrap: 'wrap',
                     gap: 2,
-                    boxShadow: '0 4px 15px rgba(15, 23, 42, 0.2)',
+                    boxShadow: '0 4px 15px rgba(10, 17, 26, 0.25)',
+                    border: `1px solid ${THEME_COLORS.darkNavyBorder}`,
                 }}
             >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -457,18 +487,18 @@ export default function InscripcionPostulantePage() {
                         startIcon={<ArrowLeft size={16} />}
                         onClick={() => navigate('/admission')}
                         sx={{
-                            color: '#e2e8f0',
-                            borderColor: 'rgba(255, 255, 255, 0.2)',
+                            color: THEME_COLORS.textLight,
+                            borderColor: THEME_COLORS.darkNavyBorder,
                             textTransform: 'none',
                             fontWeight: 600,
-                            '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.08)', borderColor: '#ffffff' },
+                            '&:hover': { bgcolor: THEME_COLORS.darkNavyHover, borderColor: THEME_COLORS.accent },
                         }}
                     >
                         Volver al Padrón
                     </Button>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <UserPlus size={24} color="#38bdf8" />
-                        <Typography variant="h6" fontWeight={800} sx={{ letterSpacing: 0.5, color: '#ffffff' }}>
+                        <UserPlus size={24} color={THEME_COLORS.accent} />
+                        <Typography variant="h6" fontWeight={800} sx={{ letterSpacing: 0.5, color: THEME_COLORS.textLight }}>
                             Registro de Postulante
                         </Typography>
                     </Box>
@@ -485,13 +515,13 @@ export default function InscripcionPostulantePage() {
                         disabled={loadingProceso}
                         sx={{
                             minWidth: 260,
-                            bgcolor: 'rgba(255, 255, 255, 0.08)',
+                            bgcolor: THEME_COLORS.darkNavySurface,
                             borderRadius: 1.5,
-                            '& .MuiInputBase-input': { color: '#ffffff', fontWeight: 600, fontSize: 13 },
-                            '& .MuiInputLabel-root': { color: '#94a3b8' },
-                            '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#38bdf8' },
-                            '& .MuiSvgIcon-root': { color: '#ffffff' },
+                            '& .MuiInputBase-input': { color: THEME_COLORS.textLight, fontWeight: 600, fontSize: 13 },
+                            '& .MuiInputLabel-root': { color: THEME_COLORS.textMuted },
+                            '& .MuiOutlinedInput-notchedOutline': { borderColor: THEME_COLORS.darkNavyBorder },
+                            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: THEME_COLORS.accent },
+                            '& .MuiSvgIcon-root': { color: THEME_COLORS.textLight },
                         }}
                     >
                         {procesos.map((p) => (
@@ -512,7 +542,7 @@ export default function InscripcionPostulantePage() {
                 </Box>
             </Paper>
 
-            {/* Alertas */}
+            {/* Alertas de Estado */}
             {isConvocatoriaCerrada && (
                 <Alert severity="warning" icon={<Lock size={20} />} sx={{ mb: 3, borderRadius: 2, fontWeight: 700 }}>
                     Esta convocatoria se encuentra actualmente <strong>CERRADA</strong>. No se admiten nuevas inscripciones.
@@ -531,24 +561,24 @@ export default function InscripcionPostulantePage() {
                 </Alert>
             )}
 
-            {/* STEPPER VISUAL CON RECIPIENTES (Exacto a la captura) */}
+            {/* STEPPER VISUAL CON RECIPIENTES */}
             <Paper
                 elevation={0}
                 sx={{
                     p: { xs: 2, md: 3 },
                     borderRadius: 3,
-                    border: '1px solid #e2e8f0',
+                    border: `1px solid ${THEME_COLORS.border}`,
                     mb: 3,
-                    bgcolor: '#ffffff',
+                    bgcolor: THEME_COLORS.surface,
                 }}
             >
                 {/* Barra de Progreso Superior */}
-                <Box sx={{ width: '100%', height: 6, bgcolor: '#e2e8f0', borderRadius: 3, mb: 3, overflow: 'hidden' }}>
+                <Box sx={{ width: '100%', height: 6, bgcolor: THEME_COLORS.border, borderRadius: 3, mb: 3, overflow: 'hidden' }}>
                     <Box
                         sx={{
                             width: `${((activeStep + 1) / STEPS.length) * 100}%`,
                             height: '100%',
-                            bgcolor: '#3b82f6',
+                            bgcolor: THEME_COLORS.primary,
                             transition: 'width 0.4s ease-in-out',
                         }}
                     />
@@ -570,7 +600,6 @@ export default function InscripcionPostulantePage() {
                             <Box
                                 key={s.number}
                                 onClick={() => {
-                                    // Solo permitir avanzar si ya tiene postulación creada o si retrocede
                                     if (postulacion || idx <= activeStep) {
                                         setActiveStep(idx);
                                     }
@@ -583,8 +612,8 @@ export default function InscripcionPostulantePage() {
                                     opacity: (!postulacion && idx > activeStep) ? 0.5 : 1,
                                     p: 1,
                                     borderRadius: 2,
-                                    bgcolor: isActive ? '#f0f9ff' : 'transparent',
-                                    border: isActive ? '1px solid #bae6fd' : '1px solid transparent',
+                                    bgcolor: isActive ? THEME_COLORS.primaryLight : 'transparent',
+                                    border: isActive ? `1px solid ${THEME_COLORS.primaryBorder}` : '1px solid transparent',
                                     transition: 'all 0.2s',
                                 }}
                             >
@@ -593,8 +622,8 @@ export default function InscripcionPostulantePage() {
                                         width: 36,
                                         height: 36,
                                         borderRadius: '50%',
-                                        bgcolor: isDone ? '#2563eb' : isActive ? '#2563eb' : '#94a3b8',
-                                        color: '#ffffff',
+                                        bgcolor: isDone || isActive ? THEME_COLORS.primary : THEME_COLORS.textMuted,
+                                        color: THEME_COLORS.textLight,
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
@@ -607,10 +636,15 @@ export default function InscripcionPostulantePage() {
                                     {isDone && !isActive ? <Check size={18} strokeWidth={3} /> : s.number}
                                 </Box>
                                 <Box sx={{ minWidth: 0 }}>
-                                    <Typography variant="body2" fontWeight={isActive ? 800 : 700} noWrap sx={{ color: isActive ? '#0f172a' : '#475569', fontSize: 13 }}>
+                                    <Typography
+                                        variant="body2"
+                                        fontWeight={isActive ? 800 : 700}
+                                        noWrap
+                                        sx={{ color: isActive ? THEME_COLORS.textPrimary : THEME_COLORS.secondary, fontSize: 13 }}
+                                    >
                                         {s.title}
                                     </Typography>
-                                    <Typography variant="caption" noWrap sx={{ color: '#94a3b8', display: 'block', fontSize: 11 }}>
+                                    <Typography variant="caption" noWrap sx={{ color: THEME_COLORS.textMuted, display: 'block', fontSize: 11 }}>
                                         {s.subtitle}
                                     </Typography>
                                 </Box>
@@ -621,32 +655,58 @@ export default function InscripcionPostulantePage() {
             </Paper>
 
             {/* CONTENIDO PRINCIPAL POR PASOS */}
-            <Paper elevation={0} sx={{ p: { xs: 2.5, md: 4 }, borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: '#ffffff' }}>
+            <Paper
+                elevation={0}
+                sx={{
+                    p: { xs: 2.5, md: 4 },
+                    borderRadius: 3,
+                    border: `1px solid ${THEME_COLORS.border}`,
+                    bgcolor: THEME_COLORS.surface,
+                }}
+            >
                 {/* ========================================================
                     PASO 1: DATOS (INFORMACIÓN PERSONAL)
                    ======================================================== */}
                 {activeStep === 0 && (
                     <Box component="form" onSubmit={(e) => handleGuardarPaso1(e)}>
                         <Box sx={{ mb: 3 }}>
-                            <Typography variant="h6" fontWeight={800} color="#0f172a">
+                            <Typography variant="h6" fontWeight={800} sx={{ color: THEME_COLORS.textPrimary }}>
                                 1. Información Personal del Postulante
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                Ingrese el DNI para consultar registros previos en RENIEC o en la institución. Se generará automáticamente el Código de Tesorería.
+                            <Typography variant="body2" sx={{ color: THEME_COLORS.textSecondary }}>
+                                Ingrese el tipo y número de documento para consultar registros previos en RENIEC o en la institución. Se generará automáticamente el Código de Tesorería.
                             </Typography>
                         </Box>
 
                         <Grid container spacing={2.5}>
-                            {/* Fila 1: DNI (con botón RENIEC), Fecha de Inscripción, País */}
+                            {/* Fila 1: Tipo Documento, Número con botón RENIEC, Fecha Inscripción, País */}
+                            <Grid item xs={12} sm={3}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
+                                    Tipo de Documento *
+                                </Typography>
+                                <TextField
+                                    select
+                                    size="small"
+                                    fullWidth
+                                    name="tipo_documento"
+                                    value={formDatos.tipo_documento}
+                                    onChange={handleDatosChange}
+                                >
+                                    <MenuItem value="DNI">DNI - Documento Nacional de Identidad</MenuItem>
+                                    <MenuItem value="CE">Carné de Extranjería (CE)</MenuItem>
+                                    <MenuItem value="PASAPORTE">Pasaporte</MenuItem>
+                                </TextField>
+                            </Grid>
+
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
-                                    DNI *
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
+                                    Número de Documento (Código de Tesorería) *
                                 </Typography>
                                 <Box sx={{ display: 'flex', gap: 1 }}>
                                     <TextField
                                         size="small"
                                         fullWidth
-                                        placeholder="87654321"
+                                        placeholder={formDatos.tipo_documento === 'DNI' ? '87654321' : 'Número de Documento'}
                                         name="numero_documento"
                                         value={formDatos.numero_documento}
                                         onChange={handleDatosChange}
@@ -654,7 +714,7 @@ export default function InscripcionPostulantePage() {
                                         InputProps={{
                                             startAdornment: (
                                                 <InputAdornment position="start">
-                                                    <FileText size={16} color="#64748b" />
+                                                    <FileText size={16} color={THEME_COLORS.textSecondary} />
                                                 </InputAdornment>
                                             ),
                                         }}
@@ -666,11 +726,11 @@ export default function InscripcionPostulantePage() {
                                         sx={{
                                             textTransform: 'none',
                                             fontWeight: 800,
-                                            borderColor: '#2563eb',
-                                            color: '#2563eb',
+                                            borderColor: THEME_COLORS.primary,
+                                            color: THEME_COLORS.primary,
                                             px: 2,
                                             borderRadius: 1.5,
-                                            '&:hover': { bgcolor: '#eff6ff', borderColor: '#1d4ed8' },
+                                            '&:hover': { bgcolor: THEME_COLORS.primaryLight, borderColor: THEME_COLORS.primaryHover },
                                         }}
                                     >
                                         {buscandoDni ? <CircularProgress size={16} /> : 'COMPROBAR'}
@@ -678,8 +738,8 @@ export default function InscripcionPostulantePage() {
                                 </Box>
                             </Grid>
 
-                            <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                            <Grid item xs={12} sm={2.5}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Fecha de Inscripción
                                 </Typography>
                                 <TextField
@@ -692,8 +752,8 @@ export default function InscripcionPostulantePage() {
                                 />
                             </Grid>
 
-                            <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                            <Grid item xs={12} sm={2.5}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     País
                                 </Typography>
                                 <TextField
@@ -707,7 +767,7 @@ export default function InscripcionPostulantePage() {
 
                             {/* Fila 2: Correo Electrónico, Nombres, Apellido Paterno */}
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Correo Electrónico
                                 </Typography>
                                 <TextField
@@ -721,7 +781,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Nombres *
                                 </Typography>
                                 <TextField
@@ -735,7 +795,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Apellido Paterno *
                                 </Typography>
                                 <TextField
@@ -750,7 +810,7 @@ export default function InscripcionPostulantePage() {
 
                             {/* Fila 3: Apellido Materno, Sexo, Fecha Nacimiento */}
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Apellido Materno *
                                 </Typography>
                                 <TextField
@@ -764,7 +824,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Sexo
                                 </Typography>
                                 <TextField
@@ -782,7 +842,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Fecha Nacimiento
                                 </Typography>
                                 <TextField
@@ -795,9 +855,9 @@ export default function InscripcionPostulantePage() {
                                 />
                             </Grid>
 
-                            {/* Fila 4: Departamento, Provincia, Distrito (Nacimiento / Origen) */}
+                            {/* Fila 4: Departamento, Provincia, Distrito Nacimiento */}
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Departamento Nacimiento
                                 </Typography>
                                 <TextField
@@ -810,7 +870,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Provincia Nacimiento
                                 </Typography>
                                 <TextField
@@ -823,7 +883,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Distrito Nacimiento
                                 </Typography>
                                 <TextField
@@ -837,7 +897,7 @@ export default function InscripcionPostulantePage() {
 
                             {/* Fila 5: Lengua Materna, Segunda Lengua */}
                             <Grid item xs={12} sm={6}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Lengua Materna
                                 </Typography>
                                 <TextField
@@ -851,7 +911,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={6}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Segunda Lengua
                                 </Typography>
                                 <TextField
@@ -864,9 +924,9 @@ export default function InscripcionPostulantePage() {
                                 />
                             </Grid>
 
-                            {/* Fila 6: Departamento Domicilio, Provincia Domicilio, Distrito Domicilio */}
+                            {/* Fila 6: Ubicación Domicilio */}
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Departamento Domicilio
                                 </Typography>
                                 <TextField
@@ -879,7 +939,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Provincia Domicilio
                                 </Typography>
                                 <TextField
@@ -892,7 +952,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Distrito Domicilio
                                 </Typography>
                                 <TextField
@@ -904,9 +964,9 @@ export default function InscripcionPostulantePage() {
                                 />
                             </Grid>
 
-                            {/* Fila 7: Dirección, Celular, Celular Emergencia */}
+                            {/* Fila 7: Dirección y Celulares */}
                             <Grid item xs={12} sm={6}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Dirección Domiciliaria
                                 </Typography>
                                 <TextField
@@ -920,7 +980,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={3}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Celular Postulante
                                 </Typography>
                                 <TextField
@@ -934,7 +994,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={3}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Celular de Emergencia
                                 </Typography>
                                 <TextField
@@ -956,8 +1016,8 @@ export default function InscripcionPostulantePage() {
                                 disabled={loading || isConvocatoriaCerrada}
                                 endIcon={<ChevronRight size={18} />}
                                 sx={{
-                                    bgcolor: '#2563eb',
-                                    '&:hover': { bgcolor: '#1d4ed8' },
+                                    bgcolor: THEME_COLORS.primary,
+                                    '&:hover': { bgcolor: THEME_COLORS.primaryHover },
                                     textTransform: 'none',
                                     fontWeight: 700,
                                     px: 3,
@@ -965,7 +1025,7 @@ export default function InscripcionPostulantePage() {
                                     borderRadius: 2,
                                 }}
                             >
-                                {loading ? 'Guardando...' : postulacion ? 'Actualizar Datos y Continuar' : 'Generar Código Tesorería (DNI) y Continuar'}
+                                {loading ? 'Guardando...' : postulacion ? 'Actualizar Datos y Continuar' : 'Generar Código Tesorería y Continuar'}
                             </Button>
                         </Box>
                     </Box>
@@ -977,10 +1037,10 @@ export default function InscripcionPostulantePage() {
                 {activeStep === 1 && (
                     <Box>
                         <Box sx={{ mb: 3 }}>
-                            <Typography variant="h6" fontWeight={800} color="#0f172a">
+                            <Typography variant="h6" fontWeight={800} sx={{ color: THEME_COLORS.textPrimary }}>
                                 2. Fotografía del Postulante
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body2" sx={{ color: THEME_COLORS.textSecondary }}>
                                 La fotografía se utilizará para el carnet de postulante y formatos reglamentarios (FUT y Declaración Jurada).
                             </Typography>
                         </Box>
@@ -992,14 +1052,14 @@ export default function InscripcionPostulantePage() {
                                         width: 200,
                                         height: 240,
                                         mx: 'auto',
-                                        border: '2px dashed #94a3b8',
+                                        border: `2px dashed ${fotoUrl ? THEME_COLORS.primary : THEME_COLORS.textMuted}`,
                                         borderRadius: 3,
                                         display: 'flex',
                                         flexDirection: 'column',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         overflow: 'hidden',
-                                        bgcolor: '#f8fafc',
+                                        bgcolor: THEME_COLORS.background,
                                     }}
                                 >
                                     {fotoUrl ? (
@@ -1011,33 +1071,80 @@ export default function InscripcionPostulantePage() {
                                         />
                                     ) : (
                                         <Box sx={{ textAlign: 'center', p: 2 }}>
-                                            <Upload size={36} color="#64748b" />
-                                            <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mt: 1, fontWeight: 600 }}>
+                                            <Upload size={36} color={THEME_COLORS.textSecondary} />
+                                            <Typography variant="caption" sx={{ color: THEME_COLORS.textSecondary, display: 'block', mt: 1, fontWeight: 600 }}>
                                                 Sin fotografía seleccionada
                                             </Typography>
                                         </Box>
                                     )}
                                 </Box>
+
+                                {fotoUrl && (
+                                    <Box sx={{ textAlign: 'center', mt: 1.5 }}>
+                                        <Button
+                                            size="small"
+                                            color="error"
+                                            onClick={handleRemoveFoto}
+                                            startIcon={<Trash2 size={14} />}
+                                            sx={{ textTransform: 'none', fontWeight: 700 }}
+                                        >
+                                            Quitar Fotografía
+                                        </Button>
+                                    </Box>
+                                )}
                             </Grid>
 
                             <Grid item xs={12} md={8}>
                                 <Alert severity="info" sx={{ mb: 2.5, borderRadius: 2 }}>
-                                    <strong>Requisitos de la Fotografía:</strong>
+                                    <strong>Requisitos de la Fotografía Oficial:</strong>
                                     <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
                                         <li>Tamaño carnet oficial, tomada de frente con vestimenta formal.</li>
-                                        <li>Fondo blanco sin accesorios (lentes de sol, gorras ni prendas que cubran el rostro).</li>
-                                        <li>Formato JPG o PNG legible.</li>
+                                        <li>Fondo blanco sin accesorios (lentes oscuros, gorras o prendas que cubran el rostro).</li>
+                                        <li>Formatos aceptados: JPG, JPEG o PNG (máximo 5 MB).</li>
                                     </ul>
                                 </Alert>
 
+                                {/* Input de archivo oculto */}
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    accept="image/png, image/jpeg, image/jpg"
+                                    style={{ display: 'none' }}
+                                    onChange={handleFileChange}
+                                />
+
+                                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2, flexWrap: 'wrap' }}>
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<Upload size={18} />}
+                                        onClick={() => fileInputRef.current?.click()}
+                                        sx={{
+                                            bgcolor: THEME_COLORS.primary,
+                                            '&:hover': { bgcolor: THEME_COLORS.primaryHover },
+                                            textTransform: 'none',
+                                            fontWeight: 700,
+                                            borderRadius: 2,
+                                            px: 3,
+                                            py: 1,
+                                        }}
+                                    >
+                                        Subir Fotografía desde el equipo
+                                    </Button>
+                                    {fotoFile && (
+                                        <Typography variant="caption" sx={{ color: THEME_COLORS.successText, fontWeight: 700 }}>
+                                            ✓ Archivo: {fotoFile.name}
+                                        </Typography>
+                                    )}
+                                </Box>
+
                                 <TextField
-                                    label="Enlace / URL de la Fotografía (Opcional)"
+                                    label="O ingresar Enlace / URL de la Fotografía (Opcional)"
                                     fullWidth
                                     size="small"
                                     value={fotoUrl}
                                     onChange={(e) => setFotoUrl(e.target.value)}
                                     placeholder="https://ejemplo.com/fotos/postulante.jpg"
-                                    helperText="Puede ingresar una URL directa de la foto o cargarla físicamente en mesa de partes."
+                                    helperText="Puede cargar la imagen directamente desde su equipo o ingresar un enlace."
                                 />
                             </Grid>
                         </Grid>
@@ -1055,7 +1162,13 @@ export default function InscripcionPostulantePage() {
                                 variant="contained"
                                 endIcon={<ChevronRight size={18} />}
                                 onClick={() => setActiveStep(2)}
-                                sx={{ bgcolor: '#2563eb', '&:hover': { bgcolor: '#1d4ed8' }, textTransform: 'none', fontWeight: 700, px: 3 }}
+                                sx={{
+                                    bgcolor: THEME_COLORS.primary,
+                                    '&:hover': { bgcolor: THEME_COLORS.primaryHover },
+                                    textTransform: 'none',
+                                    fontWeight: 700,
+                                    px: 3,
+                                }}
                             >
                                 Continuar a Especialidad
                             </Button>
@@ -1069,10 +1182,10 @@ export default function InscripcionPostulantePage() {
                 {activeStep === 2 && (
                     <Box>
                         <Box sx={{ mb: 3 }}>
-                            <Typography variant="h6" fontWeight={800} color="#0f172a">
+                            <Typography variant="h6" fontWeight={800} sx={{ color: THEME_COLORS.textPrimary }}>
                                 3. Selección de Especialidad Pedagógica
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body2" sx={{ color: THEME_COLORS.textSecondary }}>
                                 La prueba de admisión institucional es común, pero el postulante competirá por las vacantes del programa seleccionado.
                             </Typography>
                         </Box>
@@ -1091,11 +1204,11 @@ export default function InscripcionPostulantePage() {
                                                 p: 3,
                                                 borderRadius: 3,
                                                 cursor: 'pointer',
-                                                border: isSelected ? '2px solid #2563eb' : '1px solid #e2e8f0',
-                                                bgcolor: isSelected ? '#eff6ff' : '#ffffff',
+                                                border: isSelected ? `2px solid ${THEME_COLORS.primary}` : `1px solid ${THEME_COLORS.border}`,
+                                                bgcolor: isSelected ? THEME_COLORS.primaryLight : THEME_COLORS.surface,
                                                 transition: 'all 0.2s',
                                                 '&:hover': {
-                                                    borderColor: '#2563eb',
+                                                    borderColor: THEME_COLORS.primary,
                                                     transform: 'translateY(-2px)',
                                                     boxShadow: '0 4px 12px rgba(37, 99, 235, 0.1)',
                                                 },
@@ -1118,10 +1231,10 @@ export default function InscripcionPostulantePage() {
                                                         <Award size={24} />
                                                     </Box>
                                                     <Box>
-                                                        <Typography variant="subtitle1" fontWeight={800} color="#0f172a">
+                                                        <Typography variant="subtitle1" fontWeight={800} sx={{ color: THEME_COLORS.textPrimary }}>
                                                             {po.programa}
                                                         </Typography>
-                                                        <Typography variant="caption" color="text.secondary">
+                                                        <Typography variant="caption" sx={{ color: THEME_COLORS.textSecondary }}>
                                                             Modalidad: {po.modalidad}
                                                         </Typography>
                                                     </Box>
@@ -1141,10 +1254,10 @@ export default function InscripcionPostulantePage() {
                                             <Divider sx={{ my: 1.5 }} />
 
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Typography variant="body2" color="text.secondary">
+                                                <Typography variant="body2" sx={{ color: THEME_COLORS.textSecondary }}>
                                                     Vacantes Ofertadas:
                                                 </Typography>
-                                                <Typography variant="h6" fontWeight={800} color="#2563eb">
+                                                <Typography variant="h6" fontWeight={800} sx={{ color: THEME_COLORS.primary }}>
                                                     {po.vacantes} vacantes
                                                 </Typography>
                                             </Box>
@@ -1167,7 +1280,13 @@ export default function InscripcionPostulantePage() {
                                 variant="contained"
                                 endIcon={<ChevronRight size={18} />}
                                 onClick={() => setActiveStep(3)}
-                                sx={{ bgcolor: '#2563eb', '&:hover': { bgcolor: '#1d4ed8' }, textTransform: 'none', fontWeight: 700, px: 3 }}
+                                sx={{
+                                    bgcolor: THEME_COLORS.primary,
+                                    '&:hover': { bgcolor: THEME_COLORS.primaryHover },
+                                    textTransform: 'none',
+                                    fontWeight: 700,
+                                    px: 3,
+                                }}
                             >
                                 Continuar a Colegio
                             </Button>
@@ -1181,17 +1300,17 @@ export default function InscripcionPostulantePage() {
                 {activeStep === 3 && (
                     <Box>
                         <Box sx={{ mb: 3 }}>
-                            <Typography variant="h6" fontWeight={800} color="#0f172a">
+                            <Typography variant="h6" fontWeight={800} sx={{ color: THEME_COLORS.textPrimary }}>
                                 4. Datos de Procedencia Escolar
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body2" sx={{ color: THEME_COLORS.textSecondary }}>
                                 Información de la institución educativa de nivel secundaria donde culminó sus estudios.
                             </Typography>
                         </Box>
 
                         <Grid container spacing={2.5}>
                             <Grid item xs={12} sm={8}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Nombre del Colegio de Secundaria *
                                 </Typography>
                                 <TextField
@@ -1206,7 +1325,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Código Modular MINEDU (7 dígitos) *
                                 </Typography>
                                 <TextField
@@ -1221,7 +1340,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Año de Egreso de Secundaria *
                                 </Typography>
                                 <TextField
@@ -1236,7 +1355,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Tipo de Gestión
                                 </Typography>
                                 <TextField
@@ -1253,7 +1372,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Departamento del Colegio
                                 </Typography>
                                 <TextField
@@ -1266,7 +1385,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={6}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Provincia del Colegio
                                 </Typography>
                                 <TextField
@@ -1279,7 +1398,7 @@ export default function InscripcionPostulantePage() {
                             </Grid>
 
                             <Grid item xs={12} sm={6}>
-                                <Typography variant="caption" fontWeight={700} color="#334155" sx={{ mb: 0.5, display: 'block' }}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Distrito del Colegio
                                 </Typography>
                                 <TextField
@@ -1305,7 +1424,13 @@ export default function InscripcionPostulantePage() {
                                 variant="contained"
                                 endIcon={<ChevronRight size={18} />}
                                 onClick={() => setActiveStep(4)}
-                                sx={{ bgcolor: '#2563eb', '&:hover': { bgcolor: '#1d4ed8' }, textTransform: 'none', fontWeight: 700, px: 3 }}
+                                sx={{
+                                    bgcolor: THEME_COLORS.primary,
+                                    '&:hover': { bgcolor: THEME_COLORS.primaryHover },
+                                    textTransform: 'none',
+                                    fontWeight: 700,
+                                    px: 3,
+                                }}
                             >
                                 Continuar a Documentos
                             </Button>
@@ -1319,15 +1444,15 @@ export default function InscripcionPostulantePage() {
                 {activeStep === 4 && (
                     <Box>
                         <Box sx={{ mb: 3 }}>
-                            <Typography variant="h6" fontWeight={800} color="#0f172a">
+                            <Typography variant="h6" fontWeight={800} sx={{ color: THEME_COLORS.textPrimary }}>
                                 5. Verificación de Expediente Documentario
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body2" sx={{ color: THEME_COLORS.textSecondary }}>
                                 Marque los requisitos físicos comprobados por el responsable de recepción de expedientes.
                             </Typography>
                         </Box>
 
-                        <Paper elevation={0} sx={{ p: 3, border: '1px solid #e2e8f0', borderRadius: 2.5, bgcolor: '#f8fafc' }}>
+                        <Paper elevation={0} sx={{ p: 3, border: `1px solid ${THEME_COLORS.border}`, borderRadius: 2.5, bgcolor: THEME_COLORS.background }}>
                             <Grid container spacing={2}>
                                 <Grid item xs={12}>
                                     <FormControlLabel
@@ -1341,9 +1466,9 @@ export default function InscripcionPostulantePage() {
                                         label={
                                             <Box>
                                                 <Typography variant="body2" fontWeight={700}>
-                                                    Copia ampliada de Documento de Identidad (DNI) a color
+                                                    Copia ampliada de Documento de Identidad (DNI / CE) a color
                                                 </Typography>
-                                                <Typography variant="caption" color="text.secondary">
+                                                <Typography variant="caption" sx={{ color: THEME_COLORS.textSecondary }}>
                                                     Vigente y legible por ambos lados.
                                                 </Typography>
                                             </Box>
@@ -1365,7 +1490,7 @@ export default function InscripcionPostulantePage() {
                                                 <Typography variant="body2" fontWeight={700}>
                                                     Partida o Acta de Nacimiento Original / Certificada
                                                 </Typography>
-                                                <Typography variant="caption" color="text.secondary">
+                                                <Typography variant="caption" sx={{ color: THEME_COLORS.textSecondary }}>
                                                     Emitida por RENIEC o Registro Civil Municipal.
                                                 </Typography>
                                             </Box>
@@ -1387,7 +1512,7 @@ export default function InscripcionPostulantePage() {
                                                 <Typography variant="body2" fontWeight={700}>
                                                     Certificado Oficial de Estudios Secundarios Completos (1° al 5°)
                                                 </Typography>
-                                                <Typography variant="caption" color="text.secondary">
+                                                <Typography variant="caption" sx={{ color: THEME_COLORS.textSecondary }}>
                                                     Visado por la UGEL correspondiente o emitido por la plataforma MINEDU.
                                                 </Typography>
                                             </Box>
@@ -1417,7 +1542,13 @@ export default function InscripcionPostulantePage() {
                                     }
                                 }}
                                 disabled={loading}
-                                sx={{ bgcolor: '#2563eb', '&:hover': { bgcolor: '#1d4ed8' }, textTransform: 'none', fontWeight: 700, px: 3 }}
+                                sx={{
+                                    bgcolor: THEME_COLORS.primary,
+                                    '&:hover': { bgcolor: THEME_COLORS.primaryHover },
+                                    textTransform: 'none',
+                                    fontWeight: 700,
+                                    px: 3,
+                                }}
                             >
                                 {postulacion?.estado_pago === 'PAGADO' ? 'Consolidar Expediente e Ir a Formatos' : 'Continuar al Paso de Pago'}
                             </Button>
@@ -1431,11 +1562,11 @@ export default function InscripcionPostulantePage() {
                 {activeStep === 5 && (
                     <Box>
                         <Box sx={{ mb: 3, textAlign: 'center' }}>
-                            <Typography variant="h6" fontWeight={800} color="#0f172a">
+                            <Typography variant="h6" fontWeight={800} sx={{ color: THEME_COLORS.textPrimary }}>
                                 6. Validación de Pago en Tesorería y Emisión de Formatos Oficiales
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                El derecho de admisión se asocia directamente al DNI del postulante (Código de Tesorería).
+                            <Typography variant="body2" sx={{ color: THEME_COLORS.textSecondary }}>
+                                El derecho de admisión se asocia directamente al número de documento del postulante (Código de Tesorería).
                             </Typography>
                         </Box>
 
@@ -1444,14 +1575,14 @@ export default function InscripcionPostulantePage() {
                             <Box sx={{ maxWidth: 600, mx: 'auto' }}>
                                 <Alert severity="warning" icon={<CreditCard size={22} />} sx={{ mb: 3, borderRadius: 2 }}>
                                     <Typography variant="subtitle2" fontWeight={800}>
-                                        Código de Cobranza en Tesorería: {postulacion?.codigo_tesoreria || formDatos.numero_documento || 'DNI'}
+                                        Código de Cobranza en Tesorería: {postulacion?.codigo_tesoreria || formDatos.numero_documento || 'DOCUMENTO'}
                                     </Typography>
                                     <Typography variant="body2" sx={{ mt: 0.5 }}>
-                                        El postulante debe acercarse a Caja/Tesorería e indicar su DNI para efectuar el abono de S/ 150.00.
+                                        El postulante debe acercarse a Caja/Tesorería e indicar su documento para efectuar el abono reglamentario de S/ 150.00.
                                     </Typography>
                                 </Alert>
 
-                                <Paper elevation={0} sx={{ p: 3, border: '1px solid #e2e8f0', borderRadius: 2.5, bgcolor: '#f8fafc', mb: 3 }}>
+                                <Paper elevation={0} sx={{ p: 3, border: `1px solid ${THEME_COLORS.border}`, borderRadius: 2.5, bgcolor: THEME_COLORS.background, mb: 3 }}>
                                     <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 2 }}>
                                         Validación Rápida con Comprobante de Caja
                                     </Typography>
@@ -1484,8 +1615,8 @@ export default function InscripcionPostulantePage() {
                                         disabled={loading || !postulacion}
                                         sx={{
                                             mt: 2.5,
-                                            bgcolor: '#059669',
-                                            '&:hover': { bgcolor: '#047857' },
+                                            bgcolor: THEME_COLORS.success,
+                                            '&:hover': { bgcolor: THEME_COLORS.successHover },
                                             fontWeight: 800,
                                             textTransform: 'none',
                                             py: 1,
@@ -1508,17 +1639,17 @@ export default function InscripcionPostulantePage() {
                                 <Grid container spacing={3} sx={{ mb: 4 }}>
                                     {/* Card FUT */}
                                     <Grid item xs={12} md={6}>
-                                        <Card elevation={0} sx={{ p: 3, border: '2px solid #0284c7', borderRadius: 3, bgcolor: '#f0f9ff' }}>
+                                        <Card elevation={0} sx={{ p: 3, border: `2px solid ${THEME_COLORS.info}`, borderRadius: 3, bgcolor: THEME_COLORS.infoLight }}>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                                                <FileText size={24} color="#0284c7" />
-                                                <Typography variant="h6" fontWeight={800} color="#0f172a">
+                                                <FileText size={24} color={THEME_COLORS.info} />
+                                                <Typography variant="h6" fontWeight={800} sx={{ color: THEME_COLORS.textPrimary }}>
                                                     Formulario Único de Trámite (FUT)
                                                 </Typography>
                                             </Box>
-                                            <Typography variant="caption" sx={{ color: '#0369a1', fontWeight: 800, display: 'block', mb: 1 }}>
+                                            <Typography variant="caption" sx={{ color: THEME_COLORS.infoText, fontWeight: 800, display: 'block', mb: 1 }}>
                                                 N° OFICIAL: {postulacion.numero_fut}
                                             </Typography>
-                                            <Typography variant="body2" color="text.secondary" paragraph>
+                                            <Typography variant="body2" sx={{ color: THEME_COLORS.textSecondary }} paragraph>
                                                 Formato prellenado en formato A4 con membrete ministerial, datos del postulante, carrera y casillas reglamentarias para Mesa de Partes.
                                             </Typography>
                                             <Button
@@ -1530,8 +1661,8 @@ export default function InscripcionPostulantePage() {
                                                     printUrl: admissionService.getFutPrintUrl(postulacion.id),
                                                 })}
                                                 sx={{
-                                                    bgcolor: '#0284c7',
-                                                    '&:hover': { bgcolor: '#0369a1' },
+                                                    bgcolor: THEME_COLORS.info,
+                                                    '&:hover': { bgcolor: THEME_COLORS.infoText },
                                                     textTransform: 'none',
                                                     fontWeight: 800,
                                                     borderRadius: 2,
@@ -1545,17 +1676,17 @@ export default function InscripcionPostulantePage() {
 
                                     {/* Card Declaración Jurada */}
                                     <Grid item xs={12} md={6}>
-                                        <Card elevation={0} sx={{ p: 3, border: '2px solid #334155', borderRadius: 3, bgcolor: '#f8fafc' }}>
+                                        <Card elevation={0} sx={{ p: 3, border: `2px solid ${THEME_COLORS.secondary}`, borderRadius: 3, bgcolor: THEME_COLORS.background }}>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                                                <ShieldCheck size={24} color="#334155" />
-                                                <Typography variant="h6" fontWeight={800} color="#0f172a">
+                                                <ShieldCheck size={24} color={THEME_COLORS.secondary} />
+                                                <Typography variant="h6" fontWeight={800} sx={{ color: THEME_COLORS.textPrimary }}>
                                                     Declaración Jurada de Antecedentes
                                                 </Typography>
                                             </Box>
-                                            <Typography variant="caption" sx={{ color: '#475569', fontWeight: 800, display: 'block', mb: 1 }}>
+                                            <Typography variant="caption" sx={{ color: THEME_COLORS.secondary, fontWeight: 800, display: 'block', mb: 1 }}>
                                                 LEY N° 27444 — PROCEDIMIENTO ADMINISTRATIVO
                                             </Typography>
-                                            <Typography variant="body2" color="text.secondary" paragraph>
+                                            <Typography variant="body2" sx={{ color: THEME_COLORS.textSecondary }} paragraph>
                                                 Declaración legal bajo juramento de no registrar antecedentes, con recuadros para firma manuscrita y huella dactilar.
                                             </Typography>
                                             <Button
@@ -1567,9 +1698,9 @@ export default function InscripcionPostulantePage() {
                                                     printUrl: admissionService.getDeclaracionPrintUrl(postulacion.id),
                                                 })}
                                                 sx={{
-                                                    borderColor: '#334155',
-                                                    color: '#334155',
-                                                    '&:hover': { bgcolor: '#f1f5f9', borderColor: '#0f172a' },
+                                                    borderColor: THEME_COLORS.secondary,
+                                                    color: THEME_COLORS.secondary,
+                                                    '&:hover': { bgcolor: THEME_COLORS.surface, borderColor: THEME_COLORS.textPrimary },
                                                     textTransform: 'none',
                                                     fontWeight: 800,
                                                     borderRadius: 2,
@@ -1590,8 +1721,8 @@ export default function InscripcionPostulantePage() {
                                             onClick={handleFinalizarExpediente}
                                             disabled={loading}
                                             sx={{
-                                                bgcolor: '#059669',
-                                                '&:hover': { bgcolor: '#047857' },
+                                                bgcolor: THEME_COLORS.success,
+                                                '&:hover': { bgcolor: THEME_COLORS.successHover },
                                                 fontWeight: 800,
                                                 px: 4,
                                                 py: 1.2,
@@ -1618,7 +1749,13 @@ export default function InscripcionPostulantePage() {
                             <Button
                                 variant="contained"
                                 onClick={() => navigate('/admission')}
-                                sx={{ bgcolor: '#0f172a', '&:hover': { bgcolor: '#1e293b' }, textTransform: 'none', fontWeight: 800, px: 3 }}
+                                sx={{
+                                    bgcolor: THEME_COLORS.darkNavy,
+                                    '&:hover': { bgcolor: THEME_COLORS.darkNavySurface },
+                                    textTransform: 'none',
+                                    fontWeight: 800,
+                                    px: 3,
+                                }}
                             >
                                 Finalizar y Volver al Padrón
                             </Button>

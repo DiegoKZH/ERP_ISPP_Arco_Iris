@@ -51,6 +51,14 @@ export const admissionService = {
     },
 
     /**
+     * Eliminar postulación y liberar cupo correlativo y número de FUT.
+     */
+    deletePostulacion: async (id) => {
+        const response = await api.delete(`/admision/postulaciones/${id}`);
+        return response.data;
+    },
+
+    /**
      * Register a new applicant (creates/updates Persona & registers Postulacion).
      */
     createPostulacion: async (data) => {

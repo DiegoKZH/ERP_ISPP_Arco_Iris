@@ -159,9 +159,19 @@ class AdmisionPostulacionController extends Controller
                 return $existente;
             }
 
-            // 3. Generar correlativo de postulante
-            $count = AdmisionPostulacion::where('admision_proceso_id', $proceso->id)->count() + 1;
-            $codigoPostulante = sprintf('POST-%s-%04d', str_replace(['-', ' '], '', $proceso->codigo), $count);
+            // 3. Generar correlativo de postulante reutilizando cupos liberados si existen
+            $prefix = sprintf('POST-%s-', str_replace(['-', ' '], '', $proceso->codigo));
+            $existingNumbers = AdmisionPostulacion::where('admision_proceso_id', $proceso->id)
+                ->pluck('codigo_postulante')
+                ->map(fn($c) => (int) str_replace($prefix, '', $c))
+                ->filter()
+                ->toArray();
+
+            $nextNum = 1;
+            while (in_array($nextNum, $existingNumbers)) {
+                $nextNum++;
+            }
+            $codigoPostulante = sprintf('%s%04d', $prefix, $nextNum);
 
             // 4. Crear Postulación con código de tesorería = DNI
             return AdmisionPostulacion::create([
@@ -201,8 +211,18 @@ class AdmisionPostulacionController extends Controller
             $year = date('Y');
             
             if (!$postulacion->numero_fut) {
-                $countFut = AdmisionPostulacion::whereNotNull('numero_fut')->count() + 1;
-                $postulacion->numero_fut = sprintf('FUT-%s-%04d', $year, $countFut);
+                $prefixFut = sprintf('FUT-%s-', $year);
+                $existingFuts = AdmisionPostulacion::whereNotNull('numero_fut')
+                    ->pluck('numero_fut')
+                    ->map(fn($f) => (int) str_replace($prefixFut, '', $f))
+                    ->filter()
+                    ->toArray();
+
+                $nextFutNum = 1;
+                while (in_array($nextFutNum, $existingFuts)) {
+                    $nextFutNum++;
+                }
+                $postulacion->numero_fut = sprintf('%s%04d', $prefixFut, $nextFutNum);
                 $postulacion->fecha_emision_fut = now();
             }
 
@@ -502,6 +522,30 @@ class AdmisionPostulacionController extends Controller
         ]);
 
         return view('documents.declaracion_jurada', compact('postulacion'));
+    }
+
+    /**
+     * Eliminar postulante y liberar su código de postulante y número de FUT para futuras inscripciones.
+     */
+    public function destroy(AdmisionPostulacion $postulacion): JsonResponse
+    {
+        $codigo = $postulacion->codigo_postulante;
+        $fut = $postulacion->numero_fut;
+
+        DB::transaction(function () use ($postulacion) {
+            $postulacion->calificaciones()->delete();
+            $postulacion->resultado()?->delete();
+            $postulacion->constancia()?->delete();
+            $postulacion->documentos()->delete();
+            $postulacion->ambienteAsignado()?->delete();
+
+            // Usamos forceDelete para liberar de inmediato los índices únicos en BD
+            $postulacion->forceDelete();
+        });
+
+        return response()->json([
+            'message' => "Postulante {$codigo}" . ($fut ? " y N° de FUT {$fut}" : '') . " eliminados correctamente. El correlativo queda disponible para futuras inscripciones.",
+        ]);
     }
 }
 

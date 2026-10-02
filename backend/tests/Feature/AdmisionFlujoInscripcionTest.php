@@ -130,7 +130,7 @@ class AdmisionFlujoInscripcionTest extends TestCase
 
         $this->assertDatabaseHas('personas', [
             'numero_documento' => '79998888',
-            'nombres' => 'María Elena',
+            'nombres' => 'MARÍA ELENA',
         ]);
 
         $this->assertDatabaseHas('admision_postulaciones', [
