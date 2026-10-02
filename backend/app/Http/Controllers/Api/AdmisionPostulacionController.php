@@ -70,6 +70,48 @@ class AdmisionPostulacionController extends Controller
     }
 
     /**
+     * Consultar postulación o datos de persona por DNI para reanudación de flujo.
+     */
+    public function consultarPorDni(Request $request, string $dni): JsonResponse
+    {
+        $procesoId = $request->query('admision_proceso_id');
+
+        $query = AdmisionPostulacion::with([
+            'persona',
+            'proceso',
+            'programaOfertado.programaEstudio',
+            'programaOfertado.modalidad',
+        ])
+        ->whereHas('persona', fn($q) => $q->where('numero_documento', $dni));
+
+        if ($procesoId) {
+            $query->where('admision_proceso_id', $procesoId);
+        }
+
+        $postulacion = $query->latest('id')->first();
+
+        if ($postulacion) {
+            return response()->json([
+                'encontrado' => true,
+                'data' => new AdmisionPostulacionResource($postulacion),
+                'persona' => $postulacion->persona,
+                'message' => 'Se encontró una solicitud de admisión registrada para este DNI.',
+            ]);
+        }
+
+        $persona = Persona::where('numero_documento', $dni)->first();
+
+        return response()->json([
+            'encontrado' => false,
+            'data' => null,
+            'persona' => $persona,
+            'message' => $persona
+                ? 'Persona encontrada en el sistema.'
+                : 'No se encontraron registros previos para este documento.',
+        ]);
+    }
+
+    /**
      * Paso 1 y 2: Pre-inscripción de postulante y generación de código de tesorería (DNI).
      */
     public function preInscribir(PreInscribirPostulacionRequest $request): JsonResponse
@@ -83,7 +125,11 @@ class AdmisionPostulacionController extends Controller
             ], 422);
         }
 
-        $postulacion = DB::transaction(function () use ($validated, $proceso) {
+        // Si no se envió programa ofertado, asignar el primer programa disponible del proceso
+        $programaOfertadoId = $validated['admision_programa_ofertado_id'] 
+            ?? $proceso->programasOfertados()->first()?->id;
+
+        $postulacion = DB::transaction(function () use ($validated, $proceso, $programaOfertadoId) {
             // 1. Crear o actualizar entidad Persona con datos básicos de identidad
             $persona = Persona::updateOrCreate(
                 ['numero_documento' => $validated['numero_documento']],
@@ -100,17 +146,29 @@ class AdmisionPostulacionController extends Controller
                 ]
             );
 
-            // 2. Generar correlativo de postulante
-            $proceso = AdmisionProceso::findOrFail($validated['admision_proceso_id']);
+            // 2. Verificar si ya existe postulación para esta persona en este proceso (REANUDAR)
+            $existente = AdmisionPostulacion::where('persona_id', $persona->id)
+                ->where('admision_proceso_id', $proceso->id)
+                ->first();
+
+            if ($existente) {
+                if ($programaOfertadoId && !$existente->admision_programa_ofertado_id) {
+                    $existente->admision_programa_ofertado_id = $programaOfertadoId;
+                    $existente->save();
+                }
+                return $existente;
+            }
+
+            // 3. Generar correlativo de postulante
             $count = AdmisionPostulacion::where('admision_proceso_id', $proceso->id)->count() + 1;
             $codigoPostulante = sprintf('POST-%s-%04d', str_replace(['-', ' '], '', $proceso->codigo), $count);
 
-            // 3. Crear Postulación con código de tesorería = DNI
+            // 4. Crear Postulación con código de tesorería = DNI
             return AdmisionPostulacion::create([
                 'codigo_postulante' => $codigoPostulante,
                 'persona_id' => $persona->id,
                 'admision_proceso_id' => $proceso->id,
-                'admision_programa_ofertado_id' => $validated['admision_programa_ofertado_id'],
+                'admision_programa_ofertado_id' => $programaOfertadoId,
                 'codigo_tesoreria' => $persona->numero_documento,
                 'estado_pago' => 'PENDIENTE',
                 'estado_inscripcion' => 'PENDIENTE_PAGO',
@@ -126,7 +184,7 @@ class AdmisionPostulacionController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Pre-inscripción realizada con éxito. Código de tesorería generado.',
+            'message' => 'Solicitud procesada con éxito. Código de tesorería: ' . $postulacion->codigo_tesoreria,
             'codigo_tesoreria' => $postulacion->codigo_tesoreria,
             'data' => new AdmisionPostulacionResource($postulacion),
         ], 201);
@@ -199,8 +257,7 @@ class AdmisionPostulacionController extends Controller
                 $persona->update(array_filter($personaFields, fn($v) => !is_null($v)));
             }
 
-            // Actualizar datos del expediente escolar y requisitos en AdmisionPostulacion
-            $postulacion->fill([
+            $fillData = [
                 'colegio_fin_secundaria' => $validated['colegio_fin_secundaria'],
                 'codigo_modular_colegio' => $validated['codigo_modular_colegio'],
                 'anio_egreso_colegio' => $validated['anio_egreso_colegio'],
@@ -213,8 +270,17 @@ class AdmisionPostulacionController extends Controller
                 'tiene_partida_nacimiento' => $validated['tiene_partida_nacimiento'],
                 'tiene_certificado_nacimiento_original' => $validated['tiene_certificado_nacimiento_original'],
                 'estado_inscripcion' => 'INSCRITO',
-            ]);
+            ];
 
+            if (!empty($validated['admision_programa_ofertado_id'])) {
+                $fillData['admision_programa_ofertado_id'] = $validated['admision_programa_ofertado_id'];
+            }
+
+            if (!empty($validated['observaciones'])) {
+                $fillData['observaciones'] = $validated['observaciones'];
+            }
+
+            $postulacion->fill($fillData);
             $postulacion->save();
         });
 

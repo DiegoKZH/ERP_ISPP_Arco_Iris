@@ -345,4 +345,77 @@ class ConvocatoriasYTesoreriaTest extends TestCase
         $this->assertEquals('pedro.alvarado@gmail.com', $persona->email_personal);
         $this->assertEquals('Av. América Sur 120, Trujillo', $persona->direccion);
     }
+
+    public function test_puede_consultar_postulacion_por_dni_para_reanudar_flujo(): void
+    {
+        $payloadPaso1 = [
+            'admision_proceso_id' => $this->procesoAbierto->id,
+            'tipo_documento' => 'DNI',
+            'numero_documento' => '71223344',
+            'nombres' => 'Rosa Elena',
+            'apellido_paterno' => 'Flores',
+            'apellido_materno' => 'Quispe',
+        ];
+
+        $this->actingAs($this->adminUser)
+            ->postJson('/api/admision/postulaciones/pre-inscribir', $payloadPaso1)
+            ->assertStatus(201);
+
+        // Consultar por DNI para reanudar
+        $res = $this->actingAs($this->adminUser)
+            ->getJson("/api/admision/postulaciones/consultar-dni/71223344?admision_proceso_id={$this->procesoAbierto->id}");
+
+        $res->assertStatus(200)
+            ->assertJsonPath('encontrado', true)
+            ->assertJsonPath('data.codigo_tesoreria', '71223344')
+            ->assertJsonPath('persona.nombres', 'Rosa Elena');
+    }
+
+    public function test_pre_inscribir_con_dni_existente_reanuda_sin_error_unique(): void
+    {
+        $payloadPaso1 = [
+            'admision_proceso_id' => $this->procesoAbierto->id,
+            'tipo_documento' => 'DNI',
+            'numero_documento' => '79988776',
+            'nombres' => 'Carlos',
+            'apellido_paterno' => 'Mendoza',
+            'apellido_materno' => 'Rojas',
+        ];
+
+        // Primera llamada
+        $res1 = $this->actingAs($this->adminUser)
+            ->postJson('/api/admision/postulaciones/pre-inscribir', $payloadPaso1);
+        $res1->assertStatus(201);
+
+        // Segunda llamada con el mismo DNI (simulando reingreso al flujo)
+        $res2 = $this->actingAs($this->adminUser)
+            ->postJson('/api/admision/postulaciones/pre-inscribir', $payloadPaso1);
+        $res2->assertStatus(201)
+            ->assertJsonPath('codigo_tesoreria', '79988776');
+
+        // Confirmar que no se duplicó el registro
+        $this->assertEquals(1, AdmisionPostulacion::where('codigo_tesoreria', '79988776')->count());
+    }
+
+    public function test_pre_inscribir_asigna_programa_por_defecto_si_no_se_envia(): void
+    {
+        $payloadSinPrograma = [
+            'admision_proceso_id' => $this->procesoAbierto->id,
+            'tipo_documento' => 'DNI',
+            'numero_documento' => '74455667',
+            'nombres' => 'Marcos',
+            'apellido_paterno' => 'Suarez',
+            'apellido_materno' => 'Díaz',
+        ];
+
+        $res = $this->actingAs($this->adminUser)
+            ->postJson('/api/admision/postulaciones/pre-inscribir', $payloadSinPrograma);
+
+        $res->assertStatus(201)
+            ->assertJsonPath('data.codigo_tesoreria', '74455667');
+
+        $postulacion = AdmisionPostulacion::where('codigo_tesoreria', '74455667')->first();
+        $this->assertNotNull($postulacion);
+        $this->assertNotNull($postulacion->admision_programa_ofertado_id);
+    }
 }

@@ -127,8 +127,31 @@ sequenceDiagram
 - `POST /api/tesoreria/pagos-admision/{postulacion}/registrar-pago`: Registra cobro y emite número de FUT.
 
 ### Flujo de Admisión (`/api/admision/postulaciones`)
-- `POST /api/admision/postulaciones/pre-inscribir`: Registra con solo DNI, Nombres y Apellidos.
+- `GET /api/admision/postulaciones/consultar-dni/{dni}`: Consulta postulación existente o persona para reanudar el flujo sin duplicidades.
+- `POST /api/admision/postulaciones/pre-inscribir`: Registra o reanuda solicitud con DNI, Nombres y Apellidos; genera Código de Tesorería (DNI). No obliga a seleccionar carrera en la fase inicial.
 - `POST /api/admision/postulaciones/{id}/validar-pago`: Permite registrar pago y emitir FUT.
-- `POST /api/admision/postulaciones/{id}/completar-expediente`: Requiere que el pago esté validado y exista FUT; guarda datos personales complementarios y expediente académico.
+- `POST /api/admision/postulaciones/{id}/completar-expediente`: Requiere que el pago esté validado y exista FUT; guarda especialidad elegida, datos personales complementarios y expediente académico.
 - `GET /api/admision/postulaciones/{id}/fut-documento`: Estructura para FUT.
 - `GET /api/admision/postulaciones/{id}/declaracion-jurada`: Estructura para Declaración Jurada.
+
+---
+
+## 5. Experiencia de Usuario y Navegación
+
+1. **Menú Lateral y Barra Superior**:
+   - Fondo institucional en **Azul Oscuro** (`#0f172a`).
+   - Navegación optimizada mediante elementos colapsables / acordeón para:
+     - **Usuarios y Roles** (Gestión de Usuarios, Gestión de Roles).
+     - **Admisión** (Padrón de Postulantes, Inscripción de Postulantes, Gestión de Convocatorias, Vacantes Ofertadas, Cuadro de Mérito).
+     - **Tesorería** (Módulo de Tesorería y Cobranzas).
+
+2. **Pantalla Dedicada de Inscripción (`/admission/inscribir`)**:
+   - Barra superior azul oscuro con título `+ Registro de Postulante`.
+   - Stepper horizontal con 6 pasos:
+     1. Datos (Información Personal con botón RENIEC).
+     2. Foto (Imagen de Perfil).
+     3. Especialidad (Carrera Profesional: Inicial o Educación Física).
+     4. Colegio (Institución Educativa con Código Modular).
+     5. Documentos (Requisitos Físicos).
+     6. Pago (Voucher / Monto & Formatos Oficiales A4).
+   - Botón "Continuar Inscripción" en el Padrón de Postulantes para reanudar trámites en proceso en cualquier momento.

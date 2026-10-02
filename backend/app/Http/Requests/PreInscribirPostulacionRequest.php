@@ -15,7 +15,7 @@ class PreInscribirPostulacionRequest extends FormRequest
     {
         return [
             'admision_proceso_id' => ['required', 'exists:admision_procesos,id'],
-            'admision_programa_ofertado_id' => ['required', 'exists:admision_programas_ofertados,id'],
+            'admision_programa_ofertado_id' => ['nullable', 'exists:admision_programas_ofertados,id'],
             'tipo_documento' => ['required', 'string', 'in:DNI,CE,PASAPORTE'],
             'numero_documento' => ['required', 'string', 'max:20'],
             'nombres' => ['required', 'string', 'max:100'],

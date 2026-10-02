@@ -174,7 +174,7 @@
         <!-- HEADER -->
         <div class="header">
             <h3>Ministerio de Educación — República del Perú</h3>
-            <h1>INSTITUTO DE EDUCACIÓN SUPERIOR PEDAGÓGICO PÚBLICO "ARCO IRIS"</h1>
+            <h1>INSTITUTO DE EDUCACIÓN SUPERIOR PEDAGÓGICO PRIVADA "ARCO IRIS"</h1>
             <h2>COMISIÓN INSTITUCIONAL DEL PROCESO DE ADMISIÓN {{ $postulacion->proceso?->codigo }}</h2>
         </div>
 
@@ -247,7 +247,7 @@
 
         <!-- FOOTER -->
         <div style="margin-top: 40px; border-top: 1px solid #cbd5e1; padding-top: 5px; font-size: 10px; color: #64748b; display: flex; justify-content: space-between;">
-            <span>IESP Público "Arco Iris" — Admisión {{ $postulacion->proceso?->codigo }}</span>
+            <span>IESPP"Arco Iris" — Admisión {{ $postulacion->proceso?->codigo }}</span>
             <span>Documento generado por el ERP Institucional</span>
         </div>
     </div>

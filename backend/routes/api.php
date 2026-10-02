@@ -56,6 +56,7 @@ Route::middleware(['auth:sanctum'])->prefix('admision')->group(function () {
 
     // Postulaciones y Flujo Oficial de Admisión
     Route::get('/postulaciones', [AdmisionPostulacionController::class, 'index'])->middleware('permission:admision.postulantes.ver');
+    Route::get('/postulaciones/consultar-dni/{dni}', [AdmisionPostulacionController::class, 'consultarPorDni'])->middleware('permission:admision.postulantes.ver|admision.postulantes.inscribir');
     Route::post('/postulaciones', [AdmisionPostulacionController::class, 'store'])->middleware('permission:admision.postulantes.inscribir');
     Route::post('/postulaciones/pre-inscribir', [AdmisionPostulacionController::class, 'preInscribir'])->middleware('permission:admision.postulantes.inscribir');
     Route::get('/postulaciones/{postulacion}', [AdmisionPostulacionController::class, 'show'])->middleware('permission:admision.postulantes.ver');

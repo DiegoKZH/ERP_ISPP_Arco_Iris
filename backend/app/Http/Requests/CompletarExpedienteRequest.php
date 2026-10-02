@@ -14,12 +14,16 @@ class CompletarExpedienteRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // Especialidad / Programa Ofertado
+            'admision_programa_ofertado_id' => ['nullable', 'exists:admision_programas_ofertados,id'],
+
             // Datos personales complementarios (Fase posterior al pago y FUT)
             'fecha_nacimiento' => ['nullable', 'date'],
             'sexo' => ['nullable', 'in:M,F'],
             'celular' => ['nullable', 'string', 'max:20'],
             'email_personal' => ['nullable', 'email', 'max:150'],
             'direccion' => ['nullable', 'string', 'max:255'],
+            'observaciones' => ['nullable', 'string'],
 
             // Procedencia escolar
             'colegio_fin_secundaria' => ['required', 'string', 'max:200'],

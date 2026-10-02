@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { admissionService } from '../../services/admissionService';
 import { THEME_COLORS } from '../../theme/colors';
 import ModalInscripcionFlujo from './ModalInscripcionFlujo';
@@ -56,7 +57,21 @@ import {
 } from '@mui/material';
 
 export default function AdmissionDashboard() {
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [currentTab, setCurrentTab] = useState(0);
+
+    // Sincronizar tab desde URL query param (?tab=convocatorias | resultados | padron)
+    useEffect(() => {
+        const tabParam = searchParams.get('tab');
+        if (tabParam === 'resultados') {
+            setCurrentTab(1);
+        } else if (tabParam === 'convocatorias' || tabParam === 'vacantes') {
+            setCurrentTab(2);
+        } else if (tabParam === 'padron') {
+            setCurrentTab(0);
+        }
+    }, [searchParams]);
 
     // Admission process state
     const [procesos, setProcesos] = useState([]);
@@ -347,7 +362,7 @@ export default function AdmissionDashboard() {
                                 variant="contained"
                                 startIcon={<Plus size={18} />}
                                 disabled={isConvocatoriaCerrada}
-                                onClick={() => setShowWizardModal(true)}
+                                onClick={() => navigate('/admission/inscribir')}
                                 sx={{
                                     backgroundColor: THEME_COLORS.primary,
                                     '&:hover': { backgroundColor: THEME_COLORS.primaryHover },
@@ -666,44 +681,65 @@ export default function AdmissionDashboard() {
 
                                                 {/* Acciones Oficiales (FUT y Declaración Jurada) */}
                                                 <TableCell align="right">
-                                                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                                                        <Button
-                                                            size="small"
-                                                            variant="outlined"
-                                                            startIcon={<FileText size={14} />}
-                                                            onClick={() => handleOpenDocViewer(
-                                                                `Formulario Único de Trámite (FUT) — ${p.numero_fut || p.codigo_postulante}`,
-                                                                admissionService.getFutPrintUrl(p.id)
-                                                            )}
-                                                            sx={{
-                                                                textTransform: 'none',
-                                                                fontSize: 11,
-                                                                color: '#0284c7',
-                                                                borderColor: '#bae6fd',
-                                                                '&:hover': { borderColor: '#0284c7', backgroundColor: '#f0f9ff' },
-                                                            }}
-                                                        >
-                                                            FUT
-                                                        </Button>
+                                                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                                                        {p.estado_inscripcion !== 'INSCRITO' && (
+                                                            <Button
+                                                                size="small"
+                                                                variant="contained"
+                                                                onClick={() => navigate(`/admission/inscribir?dni=${p.persona?.numero_documento || p.codigo_tesoreria}&postulacion_id=${p.id}`)}
+                                                                sx={{
+                                                                    textTransform: 'none',
+                                                                    fontSize: 11,
+                                                                    fontWeight: 700,
+                                                                    backgroundColor: '#0284c7',
+                                                                    '&:hover': { backgroundColor: '#0369a1' },
+                                                                }}
+                                                            >
+                                                                Continuar Inscripción
+                                                            </Button>
+                                                        )}
 
-                                                        <Button
-                                                            size="small"
-                                                            variant="outlined"
-                                                            startIcon={<ShieldCheck size={14} />}
-                                                            onClick={() => handleOpenDocViewer(
-                                                                `Declaración Jurada de Antecedentes — ${p.persona?.numero_documento}`,
-                                                                admissionService.getDeclaracionPrintUrl(p.id)
-                                                            )}
-                                                            sx={{
-                                                                textTransform: 'none',
-                                                                fontSize: 11,
-                                                                color: '#0f172a',
-                                                                borderColor: '#cbd5e1',
-                                                                '&:hover': { borderColor: '#0f172a', backgroundColor: '#f8fafc' },
-                                                            }}
-                                                        >
-                                                            Dec. Jurada
-                                                        </Button>
+                                                        {p.numero_fut && (
+                                                            <Button
+                                                                size="small"
+                                                                variant="outlined"
+                                                                startIcon={<FileText size={14} />}
+                                                                onClick={() => handleOpenDocViewer(
+                                                                    `Formulario Único de Trámite (FUT) — ${p.numero_fut || p.codigo_postulante}`,
+                                                                    admissionService.getFutPrintUrl(p.id)
+                                                                )}
+                                                                sx={{
+                                                                    textTransform: 'none',
+                                                                    fontSize: 11,
+                                                                    color: '#0284c7',
+                                                                    borderColor: '#bae6fd',
+                                                                    '&:hover': { borderColor: '#0284c7', backgroundColor: '#f0f9ff' },
+                                                                }}
+                                                            >
+                                                                FUT
+                                                            </Button>
+                                                        )}
+
+                                                        {p.estado_inscripcion === 'INSCRITO' && (
+                                                            <Button
+                                                                size="small"
+                                                                variant="outlined"
+                                                                startIcon={<ShieldCheck size={14} />}
+                                                                onClick={() => handleOpenDocViewer(
+                                                                    `Declaración Jurada de Antecedentes — ${p.persona?.numero_documento}`,
+                                                                    admissionService.getDeclaracionPrintUrl(p.id)
+                                                                )}
+                                                                sx={{
+                                                                    textTransform: 'none',
+                                                                    fontSize: 11,
+                                                                    color: '#0f172a',
+                                                                    borderColor: '#cbd5e1',
+                                                                    '&:hover': { borderColor: '#0f172a', backgroundColor: '#f8fafc' },
+                                                                }}
+                                                            >
+                                                                Dec. Jurada
+                                                            </Button>
+                                                        )}
                                                     </Box>
                                                 </TableCell>
                                             </TableRow>

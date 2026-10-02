@@ -55,3 +55,12 @@
   - [x] Crear prueba `ConvocatoriasYTesoreriaTest.php` y ejecutar suite completa.
   - [x] Ejecutar `php artisan test` (42/42 tests pasando con 175 aserciones).
   - [x] Compilar frontend con `npm run build` sin errores de empaquetado.
+
+- [x] **Tarea 7: Rediseño de Menú Lateral, Pantalla Dedicada de Inscripción y Reanudación por DNI**
+  - [x] Rediseño de `DashboardLayout.jsx` con fondo azul oscuro (`#0f172a`), barra superior a juego y menú lateral colapsable con acordeones para `Usuarios y Roles` y `Admisión`.
+  - [x] Creación de `InscripcionPostulantePage.jsx` como pantalla completa dedicada (`/admission/inscribir`) con Stepper de 6 pasos (Datos, Foto, Especialidad, Colegio, Documentos, Pago) exacto al diseño requerido.
+  - [x] Eliminación del selector obligatorio de programa pedagógico en el Paso 1, permitiendo inscripción general y selección de especialidad en el Paso 3.
+  - [x] Solución al percance de reanudación: endpoint `GET /api/admision/postulaciones/consultar-dni/{dni}` y botón RENIEC para precargar y continuar sin error de clave única.
+  - [x] Botón "Continuar Inscripción" en la tabla del Padrón de Postulantes para postulaciones en curso (`PENDIENTE_PAGO` o `PAGO_VALIDADO`).
+  - [x] Suite de pruebas expandida: 45/45 tests unitarios y de integración pasando (`ConvocatoriasYTesoreriaTest` con 9 tests y 52 aserciones).
+  - [x] Compilación de producción Vite (`npx vite build`) exitosa (0 errores).

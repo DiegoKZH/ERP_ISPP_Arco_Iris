@@ -42,6 +42,15 @@ export const admissionService = {
     },
 
     /**
+     * Consultar postulación o datos de persona por DNI para reanudar el flujo.
+     */
+    consultarPorDni: async (dni, procesoId = null) => {
+        const params = procesoId ? { admision_proceso_id: procesoId } : {};
+        const response = await api.get(`/admision/postulaciones/consultar-dni/${dni}`, { params });
+        return response.data;
+    },
+
+    /**
      * Register a new applicant (creates/updates Persona & registers Postulacion).
      */
     createPostulacion: async (data) => {
