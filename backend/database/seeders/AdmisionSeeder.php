@@ -95,27 +95,28 @@ class AdmisionSeeder extends Seeder
             ]
         );
 
-        // 4. Programas Ofertados con Vacantes (SE CONSIDERA ED INICIAL Y ED FISICA)
-        $progInicial = ProgramaEstudio::where('codigo', 'EI-01')->first();
-        $progPrimaria = ProgramaEstudio::where('codigo', 'EP-01')->first();
-        $progCom = ProgramaEstudio::where('codigo', 'ES-COM')->first();
+        // 4. Programas Ofertados con Vacantes (EXCLUSIVAMENTE EDUCACIÓN INICIAL Y EDUCACIÓN FÍSICA)
+        $progInicial = ProgramaEstudio::where('codigo', 'EI-01')->first()
+            ?? ProgramaEstudio::where('nombre', 'like', '%Educación Inicial%')->first();
 
-        // AGREGAMOS EDUCACIÓN FISICA
-        $progFisica = ProgramaEstudio::where('codigo', 'EF-01')->first();
-        
+        $progFisica = ProgramaEstudio::where('codigo', 'EF-01')
+            ->orWhere('codigo', 'EFI-01')
+            ->orWhere('nombre', 'like', '%Educación F%sica%')
+            ->first();
+
+        if (!$progFisica) {
+            $progFisica = ProgramaEstudio::create([
+                'codigo' => 'EF-01',
+                'nombre' => 'Educación Física',
+                'nivel_academico' => 'Pregrado',
+                'duracion_semestres' => 10,
+                'is_active' => true,
+            ]);
+        }
+
         $ofertaInicial = AdmisionProgramaOfertado::firstOrCreate(
             ['admision_proceso_id' => $proceso->id, 'programa_estudio_id' => $progInicial->id, 'admision_modalidad_id' => $modalidadOrd->id],
             ['vacantes' => 30]
-        );
-
-        $ofertaPrimaria = AdmisionProgramaOfertado::firstOrCreate(
-            ['admision_proceso_id' => $proceso->id, 'programa_estudio_id' => $progPrimaria->id, 'admision_modalidad_id' => $modalidadOrd->id],
-            ['vacantes' => 0]
-        );
-
-        $ofertaCom = AdmisionProgramaOfertado::firstOrCreate(
-            ['admision_proceso_id' => $proceso->id, 'programa_estudio_id' => $progCom->id, 'admision_modalidad_id' => $modalidadOrd->id],
-            ['vacantes' => 5]
         );
 
         $ofertaFisica = AdmisionProgramaOfertado::firstOrCreate(

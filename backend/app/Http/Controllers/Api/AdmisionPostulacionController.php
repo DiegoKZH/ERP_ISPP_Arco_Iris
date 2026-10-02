@@ -547,5 +547,34 @@ class AdmisionPostulacionController extends Controller
             'message' => "Postulante {$codigo}" . ($fut ? " y N° de FUT {$fut}" : '') . " eliminados correctamente. El correlativo queda disponible para futuras inscripciones.",
         ]);
     }
+
+    /**
+     * Asignar o actualizar el programa ofertado (Especialidad Pedagógica) a una postulación.
+     */
+    public function asignarPrograma(Request $request, AdmisionPostulacion $postulacion): JsonResponse
+    {
+        $validated = $request->validate([
+            'admision_programa_ofertado_id' => [
+                'required',
+                'integer',
+                'exists:admision_programas_ofertados,id',
+            ],
+        ]);
+
+        $postulacion->admision_programa_ofertado_id = $validated['admision_programa_ofertado_id'];
+        $postulacion->save();
+
+        $postulacion->load([
+            'persona',
+            'proceso',
+            'programaOfertado.programaEstudio',
+            'programaOfertado.modalidad',
+        ]);
+
+        return response()->json([
+            'message' => 'Especialidad pedagógica asignada correctamente a la postulación.',
+            'data' => new AdmisionPostulacionResource($postulacion),
+        ]);
+    }
 }
 

@@ -28,32 +28,14 @@ class AcademicCatalogsSeeder extends Seeder
                 'duracion_semestres' => 10,
                 'is_active' => true,
             ],
-            [
-                'codigo' => 'EP-01',
-                'nombre' => 'Educación Primaria',
-                'nivel_academico' => 'Pregrado',
-                'duracion_semestres' => 10,
-                'is_active' => true,
-            ],
-            [
-                'codigo' => 'ES-COM',
-                'nombre' => 'Educación Secundaria: Comunicación',
-                'nivel_academico' => 'Pregrado',
-                'duracion_semestres' => 10,
-                'is_active' => true,
-            ],
-            [
-                'codigo' => 'ES-MAT',
-                'nombre' => 'Educación Secundaria: Matemática',
-                'nivel_academico' => 'Pregrado',
-                'duracion_semestres' => 10,
-                'is_active' => true,
-            ],
         ];
 
         foreach ($programas as $prog) {
-            ProgramaEstudio::firstOrCreate(['codigo' => $prog['codigo']], $prog);
+            ProgramaEstudio::updateOrCreate(['codigo' => $prog['codigo']], $prog);
         }
+
+        // Desactivar programas no autorizados
+        ProgramaEstudio::whereNotIn('codigo', ['EI-01', 'EF-01'])->update(['is_active' => false]);
 
         PeriodoAcademico::firstOrCreate(
             ['codigo' => '2026-I'],

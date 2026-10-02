@@ -476,4 +476,35 @@ class ConvocatoriasYTesoreriaTest extends TestCase
         $resPagoNuevo->assertStatus(200);
         $this->assertEquals($futLiberado, $resPagoNuevo->json('numero_fut'));
     }
+
+    public function test_puede_asignar_y_cambiar_especialidad_pedagogica_inmediatamente(): void
+    {
+        // 1. Crear postulante con oferta Inicial
+        $resPre = $this->actingAs($this->adminUser)
+            ->postJson('/api/admision/postulaciones/pre-inscribir', [
+                'admision_proceso_id' => $this->procesoAbierto->id,
+                'admision_programa_ofertado_id' => $this->ofertaInicial->id,
+                'tipo_documento' => 'DNI',
+                'numero_documento' => '72233445',
+                'nombres' => 'Postulante Especialidad',
+                'apellido_paterno' => 'Pérez',
+                'apellido_materno' => 'Gómez',
+            ]);
+        $resPre->assertStatus(201);
+        $postulacionId = $resPre->json('data.id');
+
+        // 2. Cambiar a Educación Física en el Paso 3
+        $resAsignar = $this->actingAs($this->adminUser)
+            ->patchJson("/api/admision/postulaciones/{$postulacionId}/asignar-programa", [
+                'admision_programa_ofertado_id' => $this->ofertaFisica->id,
+            ]);
+
+        $resAsignar->assertStatus(200)
+            ->assertJsonPath('data.admision_programa_ofertado_id', $this->ofertaFisica->id);
+
+        $this->assertDatabaseHas('admision_postulaciones', [
+            'id' => $postulacionId,
+            'admision_programa_ofertado_id' => $this->ofertaFisica->id,
+        ]);
+    }
 }

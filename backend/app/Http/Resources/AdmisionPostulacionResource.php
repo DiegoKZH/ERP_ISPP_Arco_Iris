@@ -24,6 +24,8 @@ class AdmisionPostulacionResource extends JsonResource
             'monto_pago' => (float) $this->monto_pago,
             'numero_fut' => $this->numero_fut,
             'fecha_emision_fut' => $this->fecha_emision_fut?->toIso8601String(),
+            'admision_proceso_id' => $this->admision_proceso_id,
+            'admision_programa_ofertado_id' => $this->admision_programa_ofertado_id,
             'expediente_escolar' => [
                 'colegio' => $this->colegio_fin_secundaria,
                 'codigo_modular' => $this->codigo_modular_colegio,

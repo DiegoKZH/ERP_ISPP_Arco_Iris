@@ -59,6 +59,16 @@ export const admissionService = {
     },
 
     /**
+     * Asignar especialidad pedagógica / programa ofertado a la postulación.
+     */
+    asignarPrograma: async (postulacionId, programaOfertadoId) => {
+        const response = await api.patch(`/admision/postulaciones/${postulacionId}/asignar-programa`, {
+            admision_programa_ofertado_id: programaOfertadoId,
+        });
+        return response.data;
+    },
+
+    /**
      * Register a new applicant (creates/updates Persona & registers Postulacion).
      */
     createPostulacion: async (data) => {

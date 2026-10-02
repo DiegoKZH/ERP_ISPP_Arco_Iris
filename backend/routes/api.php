@@ -63,6 +63,7 @@ Route::middleware(['auth:sanctum'])->prefix('admision')->group(function () {
     Route::delete('/postulaciones/{postulacion}', [AdmisionPostulacionController::class, 'destroy'])->middleware('permission:admision.postulantes.inscribir');
     Route::post('/postulaciones/{postulacion}/validar-pago', [AdmisionPostulacionController::class, 'validarPago'])->middleware('permission:admision.postulantes.inscribir');
     Route::post('/postulaciones/{postulacion}/completar-expediente', [AdmisionPostulacionController::class, 'completarExpediente'])->middleware('permission:admision.postulantes.inscribir');
+    Route::patch('/postulaciones/{postulacion}/asignar-programa', [AdmisionPostulacionController::class, 'asignarPrograma'])->middleware('permission:admision.postulantes.inscribir');
     Route::get('/postulaciones/{postulacion}/fut-documento', [AdmisionPostulacionController::class, 'futDocumento'])->middleware('permission:admision.postulantes.ver');
     Route::get('/postulaciones/{postulacion}/declaracion-jurada', [AdmisionPostulacionController::class, 'declaracionJurada'])->middleware('permission:admision.postulantes.ver');
 

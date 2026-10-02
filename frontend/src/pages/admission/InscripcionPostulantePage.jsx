@@ -178,8 +178,13 @@ export default function InscripcionPostulantePage() {
         try {
             const detalle = await admissionService.getProceso(id);
             setProcesoDetalle(detalle);
-            if (detalle.programas_ofertados?.length > 0 && !selectedProgramaOfertadoId) {
-                setSelectedProgramaOfertadoId(detalle.programas_ofertados[0].id);
+            if (detalle.programas_ofertados?.length > 0) {
+                // Si la postulación ya tiene un programa seleccionado, respetarlo; de lo contrario asignar el primero
+                setSelectedProgramaOfertadoId((prev) => {
+                    if (prev) return prev;
+                    if (postulacion?.admision_programa_ofertado_id) return postulacion.admision_programa_ofertado_id;
+                    return detalle.programas_ofertados[0].id;
+                });
             }
         } catch (err) {
             console.error(err);
@@ -191,6 +196,35 @@ export default function InscripcionPostulantePage() {
         setSelectedProcesoId(id);
         loadProcesoDetalle(id);
         setPostulacion(null);
+    };
+
+    // Asignación interactiva e inmediata de especialidad en BD
+    const handleSeleccionarEspecialidad = async (programaOfertadoId) => {
+        setSelectedProgramaOfertadoId(programaOfertadoId);
+        if (postulacion?.id) {
+            try {
+                const res = await admissionService.asignarPrograma(postulacion.id, programaOfertadoId);
+                if (res.data) {
+                    setPostulacion(res.data);
+                }
+            } catch (err) {
+                console.error('Error al sincronizar especialidad con la BD:', err);
+            }
+        }
+    };
+
+    const handleContinuarPasoEspecialidad = async () => {
+        if (postulacion?.id && selectedProgramaOfertadoId) {
+            try {
+                const res = await admissionService.asignarPrograma(postulacion.id, selectedProgramaOfertadoId);
+                if (res.data) {
+                    setPostulacion(res.data);
+                }
+            } catch (err) {
+                console.error('Error al sincronizar especialidad con la BD:', err);
+            }
+        }
+        setActiveStep(3);
     };
 
     // Consulta de DNI o documento para reanudación de flujo
@@ -1191,80 +1225,104 @@ export default function InscripcionPostulantePage() {
                         </Box>
 
                         <Grid container spacing={3}>
-                            {programasOfertados.map((po) => {
-                                const isSelected = selectedProgramaOfertadoId === po.id;
-                                const isInicial = po.programa.toLowerCase().includes('inicial');
+                            {programasOfertados.length === 0 ? (
+                                <Grid item xs={12}>
+                                    <Paper elevation={0} sx={{ p: 4, textAlign: 'center', border: `1px solid ${THEME_COLORS.border}`, borderRadius: 2.5 }}>
+                                        <CircularProgress size={24} sx={{ color: THEME_COLORS.primary, mb: 1.5 }} />
+                                        <Typography variant="body2" sx={{ color: THEME_COLORS.textSecondary, fontWeight: 600 }}>
+                                            Cargando especialidades autorizadas de la convocatoria...
+                                        </Typography>
+                                    </Paper>
+                                </Grid>
+                            ) : (
+                                programasOfertados.map((po) => {
+                                    const isSelected = selectedProgramaOfertadoId === po.id;
+                                    const isInicial = (po.programa || '').toLowerCase().includes('inicial');
+                                    const isFisica = (po.programa || '').toLowerCase().includes('física') || (po.programa || '').toLowerCase().includes('fisica');
 
-                                return (
-                                    <Grid item xs={12} sm={6} key={po.id}>
-                                        <Card
-                                            onClick={() => setSelectedProgramaOfertadoId(po.id)}
-                                            elevation={0}
-                                            sx={{
-                                                p: 3,
-                                                borderRadius: 3,
-                                                cursor: 'pointer',
-                                                border: isSelected ? `2px solid ${THEME_COLORS.primary}` : `1px solid ${THEME_COLORS.border}`,
-                                                bgcolor: isSelected ? THEME_COLORS.primaryLight : THEME_COLORS.surface,
-                                                transition: 'all 0.2s',
-                                                '&:hover': {
-                                                    borderColor: THEME_COLORS.primary,
-                                                    transform: 'translateY(-2px)',
-                                                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.1)',
-                                                },
-                                            }}
-                                        >
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                                    <Box
-                                                        sx={{
-                                                            width: 44,
-                                                            height: 44,
-                                                            borderRadius: 2,
-                                                            bgcolor: isInicial ? 'rgba(236, 72, 153, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                                                            color: isInicial ? '#db2777' : '#059669',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                        }}
-                                                    >
-                                                        <Award size={24} />
+                                    return (
+                                        <Grid item xs={12} sm={6} key={po.id}>
+                                            <Card
+                                                onClick={() => handleSeleccionarEspecialidad(po.id)}
+                                                elevation={0}
+                                                sx={{
+                                                    p: 3,
+                                                    borderRadius: 3,
+                                                    cursor: 'pointer',
+                                                    border: isSelected ? `2px solid ${THEME_COLORS.primary}` : `1px solid ${THEME_COLORS.border}`,
+                                                    bgcolor: isSelected ? THEME_COLORS.primaryLight : THEME_COLORS.surface,
+                                                    transition: 'all 0.2s',
+                                                    '&:hover': {
+                                                        borderColor: THEME_COLORS.primary,
+                                                        transform: 'translateY(-2px)',
+                                                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.1)',
+                                                    },
+                                                }}
+                                            >
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                        <Box
+                                                            sx={{
+                                                                width: 46,
+                                                                height: 46,
+                                                                borderRadius: 2,
+                                                                bgcolor: isInicial
+                                                                    ? 'rgba(236, 72, 153, 0.15)'
+                                                                    : 'rgba(16, 185, 129, 0.15)',
+                                                                color: isInicial ? '#db2777' : '#059669',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                            }}
+                                                        >
+                                                            <Award size={26} />
+                                                        </Box>
+                                                        <Box>
+                                                            <Typography variant="subtitle1" fontWeight={800} sx={{ color: THEME_COLORS.textPrimary }}>
+                                                                {po.programa}
+                                                            </Typography>
+                                                            <Typography variant="caption" sx={{ color: THEME_COLORS.textSecondary, display: 'block' }}>
+                                                                Código: <strong>{po.codigo_programa || (isInicial ? 'EI-01' : 'EF-01')}</strong> • Modalidad: {po.modalidad || 'Admisión Ordinaria'}
+                                                            </Typography>
+                                                        </Box>
                                                     </Box>
+
+                                                    {isSelected && (
+                                                        <Chip
+                                                            icon={<Check size={14} />}
+                                                            label="Seleccionado"
+                                                            size="small"
+                                                            color="primary"
+                                                            sx={{ fontWeight: 800, fontSize: 11 }}
+                                                        />
+                                                    )}
+                                                </Box>
+
+                                                <Divider sx={{ my: 1.5 }} />
+
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                     <Box>
-                                                        <Typography variant="subtitle1" fontWeight={800} sx={{ color: THEME_COLORS.textPrimary }}>
-                                                            {po.programa}
+                                                        <Typography variant="caption" sx={{ color: THEME_COLORS.textSecondary, display: 'block' }}>
+                                                            Postulantes Inscritos:
                                                         </Typography>
-                                                        <Typography variant="caption" sx={{ color: THEME_COLORS.textSecondary }}>
-                                                            Modalidad: {po.modalidad}
+                                                        <Typography variant="body2" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary }}>
+                                                            {po.postulantes_inscritos ?? 0} registrados
+                                                        </Typography>
+                                                    </Box>
+                                                    <Box sx={{ textAlign: 'right' }}>
+                                                        <Typography variant="caption" sx={{ color: THEME_COLORS.textSecondary, display: 'block' }}>
+                                                            Vacantes Ofertadas:
+                                                        </Typography>
+                                                        <Typography variant="h6" fontWeight={800} sx={{ color: THEME_COLORS.primary }}>
+                                                            {po.vacantes} vacantes
                                                         </Typography>
                                                     </Box>
                                                 </Box>
-
-                                                {isSelected && (
-                                                    <Chip
-                                                        icon={<Check size={14} />}
-                                                        label="Seleccionado"
-                                                        size="small"
-                                                        color="primary"
-                                                        sx={{ fontWeight: 800, fontSize: 11 }}
-                                                    />
-                                                )}
-                                            </Box>
-
-                                            <Divider sx={{ my: 1.5 }} />
-
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Typography variant="body2" sx={{ color: THEME_COLORS.textSecondary }}>
-                                                    Vacantes Ofertadas:
-                                                </Typography>
-                                                <Typography variant="h6" fontWeight={800} sx={{ color: THEME_COLORS.primary }}>
-                                                    {po.vacantes} vacantes
-                                                </Typography>
-                                            </Box>
-                                        </Card>
-                                    </Grid>
-                                );
-                            })}
+                                            </Card>
+                                        </Grid>
+                                    );
+                                })
+                            )}
                         </Grid>
 
                         <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
@@ -1279,7 +1337,7 @@ export default function InscripcionPostulantePage() {
                             <Button
                                 variant="contained"
                                 endIcon={<ChevronRight size={18} />}
-                                onClick={() => setActiveStep(3)}
+                                onClick={handleContinuarPasoEspecialidad}
                                 sx={{
                                     bgcolor: THEME_COLORS.primary,
                                     '&:hover': { bgcolor: THEME_COLORS.primaryHover },
