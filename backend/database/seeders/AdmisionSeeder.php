@@ -97,8 +97,8 @@ class AdmisionSeeder extends Seeder
 
         // 4. Programas Ofertados con Vacantes (SE CONSIDERA ED INICIAL Y ED FISICA)
         $progInicial = ProgramaEstudio::where('codigo', 'EI-01')->first();
-        /*$progPrimaria = ProgramaEstudio::where('codigo', 'EP-01')->first();
-        $progCom = ProgramaEstudio::where('codigo', 'ES-COM')->first();*/
+        $progPrimaria = ProgramaEstudio::where('codigo', 'EP-01')->first();
+        $progCom = ProgramaEstudio::where('codigo', 'ES-COM')->first();
 
         // AGREGAMOS EDUCACIÓN FISICA
         $progFisica = ProgramaEstudio::where('codigo', 'EF-01')->first();
@@ -108,20 +108,20 @@ class AdmisionSeeder extends Seeder
             ['vacantes' => 30]
         );
 
-        $ofertaFisica = AdmisionProgramaOfertado::firstOrCreate(
-            ['admision_proceso_id' => $proceso->id, 'programa_estudio_id' => $progFisica->id, 'admision_modalidad_id' => $modalidadOrd->id],
-            ['vacantes' => 30]
-        );
-
-        /*$ofertaPrimaria = AdmisionProgramaOfertado::firstOrCreate(
+        $ofertaPrimaria = AdmisionProgramaOfertado::firstOrCreate(
             ['admision_proceso_id' => $proceso->id, 'programa_estudio_id' => $progPrimaria->id, 'admision_modalidad_id' => $modalidadOrd->id],
-            ['vacantes' => 30]
+            ['vacantes' => 0]
         );
 
         $ofertaCom = AdmisionProgramaOfertado::firstOrCreate(
             ['admision_proceso_id' => $proceso->id, 'programa_estudio_id' => $progCom->id, 'admision_modalidad_id' => $modalidadOrd->id],
-            ['vacantes' => 25]
-        );*/
+            ['vacantes' => 5]
+        );
+
+        $ofertaFisica = AdmisionProgramaOfertado::firstOrCreate(
+            ['admision_proceso_id' => $proceso->id, 'programa_estudio_id' => $progFisica->id, 'admision_modalidad_id' => $modalidadOrd->id],
+            ['vacantes' => 30]
+        );
 
         // 5. Ambientes
         $aula101 = AdmisionAmbiente::firstOrCreate(
