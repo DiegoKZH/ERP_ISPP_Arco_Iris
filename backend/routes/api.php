@@ -1,12 +1,23 @@
 <?php
 
+use App\Http\Controllers\Api\AlumnoController;
 use App\Http\Controllers\Api\AdmisionPostulacionController;
 use App\Http\Controllers\Api\AdmisionProcesoController;
 use App\Http\Controllers\Api\AdmisionResultadoController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\EspecialidadController; // <-- Añadido
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
+
+Route::middleware('auth:sanctum')
+    ->prefix('alumnos')
+    ->group(function () {
+        Route::get('/', [AlumnoController::class, 'index']);
+        Route::post('/', [AlumnoController::class, 'store']);
+        Route::get('/{alumno}', [AlumnoController::class, 'show']);
+        Route::put('/{alumno}', [AlumnoController::class, 'update']);
+});
 
 // Status & Health
 Route::get('/status', function () {
@@ -81,6 +92,13 @@ Route::middleware(['auth:sanctum'])->prefix('tesoreria')->group(function () {
     Route::post('/pagos-admision/{postulacion}/registrar-pago', [\App\Http\Controllers\Api\TesoreriaPagoController::class, 'registrarPago'])->middleware('permission:admision.postulantes.inscribir');
 });
 
+// --- NUEVO: GESTIÓN GLOBAL ---
+Route::middleware(['auth:sanctum'])->group(function () {
+    // Si decides usar roles, puedes adjuntar ->middleware('role:superadmin|admin') a este grupo
+    Route::apiResource('especialidades', EspecialidadController::class);
+});
+// -----------------------------
+
 // Testing & Verification Protected Routes
 if (app()->environment('testing', 'local')) {
     Route::middleware(['auth:sanctum', 'permission:usuarios.usuarios.crear'])->get('/test-permission', function () {
@@ -91,4 +109,3 @@ if (app()->environment('testing', 'local')) {
         return response()->json(['message' => 'Rol concedido']);
     });
 }
-
