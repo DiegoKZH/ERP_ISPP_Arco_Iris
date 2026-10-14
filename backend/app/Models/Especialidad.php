@@ -12,16 +12,16 @@ class Especialidad extends Model
     protected $table = 'especialidades';
 
     protected $fillable = [
-        'programa_academico_id',
         'codigo',
         'nombre',
         'estado',
-        'agil',
-        'calendario',
-        'admision',
-        'solicitar_datos',
-        'email_coordinador',
-        'grado_bachiller',
-        'grado_titulo',
     ];
+
+    /**
+     * Indica a Laravel que use 'codigo' en lugar de 'id' en las rutas de la API
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'codigo';
+    }
 }

@@ -5,11 +5,12 @@ use App\Http\Controllers\Api\AdmisionPostulacionController;
 use App\Http\Controllers\Api\AdmisionProcesoController;
 use App\Http\Controllers\Api\AdmisionResultadoController;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\EspecialidadController; // <-- Añadido
+use App\Http\Controllers\Api\EspecialidadController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
+// Alumnos Management
 Route::middleware('auth:sanctum')
     ->prefix('alumnos')
     ->group(function () {
@@ -17,7 +18,18 @@ Route::middleware('auth:sanctum')
         Route::post('/', [AlumnoController::class, 'store']);
         Route::get('/{alumno}', [AlumnoController::class, 'show']);
         Route::put('/{alumno}', [AlumnoController::class, 'update']);
-});
+    });
+
+// Especialidades Management (Por código de especialidad)
+Route::middleware('auth:sanctum')
+    ->prefix('especialidades')
+    ->group(function () {
+        Route::get('/', [EspecialidadController::class, 'index']);
+        Route::post('/', [EspecialidadController::class, 'store']);
+        Route::get('/{codigo}', [EspecialidadController::class, 'show']);
+        Route::put('/{codigo}', [EspecialidadController::class, 'update']);
+        Route::delete('/{codigo}', [EspecialidadController::class, 'destroy']);
+    });
 
 // Status & Health
 Route::get('/status', function () {
@@ -58,7 +70,6 @@ Route::middleware(['auth:sanctum'])->prefix('roles')->group(function () {
 
 // Admission Management (Módulo 08)
 Route::middleware(['auth:sanctum'])->prefix('admision')->group(function () {
-    // Procesos
     // Procesos (Convocatorias)
     Route::get('/procesos', [AdmisionProcesoController::class, 'index'])->middleware('permission:admision.procesos.ver');
     Route::post('/procesos', [AdmisionProcesoController::class, 'store'])->middleware('permission:admision.procesos.crear');
@@ -91,13 +102,6 @@ Route::middleware(['auth:sanctum'])->prefix('tesoreria')->group(function () {
     Route::get('/pagos-admision/consultar/{dni}', [\App\Http\Controllers\Api\TesoreriaPagoController::class, 'consultarDni'])->middleware('permission:admision.postulantes.ver|admision.postulantes.inscribir');
     Route::post('/pagos-admision/{postulacion}/registrar-pago', [\App\Http\Controllers\Api\TesoreriaPagoController::class, 'registrarPago'])->middleware('permission:admision.postulantes.inscribir');
 });
-
-// --- NUEVO: GESTIÓN GLOBAL ---
-Route::middleware(['auth:sanctum'])->group(function () {
-    // Si decides usar roles, puedes adjuntar ->middleware('role:superadmin|admin') a este grupo
-    Route::apiResource('especialidades', EspecialidadController::class);
-});
-// -----------------------------
 
 // Testing & Verification Protected Routes
 if (app()->environment('testing', 'local')) {

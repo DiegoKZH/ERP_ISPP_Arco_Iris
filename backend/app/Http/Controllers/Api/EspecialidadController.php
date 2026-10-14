@@ -16,18 +16,34 @@ class EspecialidadController extends Controller
     {
         $query = Especialidad::query();
 
-        // Filtrar por ID de Programa Académico
-        if ($request->filled('programa_academico_id')) {
-            $query->where('programa_academico_id', $request->programa_academico_id);
-        }
-
         // Filtrar solo los activos si el checkbox está marcado en React
         if ($request->input('solo_activos') == 1) {
             $query->where('estado', 'ACTIVO');
         }
 
+        // Búsqueda opcional por código o nombre
+        if ($request->filled('buscar')) {
+            $buscar = $request->input('buscar');
+            $query->where(function ($q) use ($buscar) {
+                $q->where('codigo', 'like', "%{$buscar}%")
+                  ->orWhere('nombre', 'like', "%{$buscar}%");
+            });
+        }
+
         // Devuelve ordenado alfabéticamente por código
         return response()->json($query->orderBy('codigo', 'asc')->get());
+    }
+
+    /**
+     * Obtener una especialidad por su código
+     */
+    public function show(string $codigo)
+    {
+        $especialidad = Especialidad::where('codigo', $codigo)->firstOrFail();
+
+        return response()->json([
+            'data' => $especialidad
+        ]);
     }
 
     /**
@@ -36,64 +52,62 @@ class EspecialidadController extends Controller
     public function store(Request $request)
     {
         $datos = $request->validate([
-            'programa_academico_id' => 'required|integer',
-            'codigo'            => 'required|string|max:50|unique:especialidades,codigo',
-            'nombre'            => 'required|string|max:200',
-            'estado'            => 'required|string|in:ACTIVO,INACTIVO',
-            'agil'              => 'required|string|in:SI,NO',
-            'calendario'        => 'required|string|in:SI,NO',
-            'admision'          => 'required|string|in:SI,NO',
-            'solicitar_datos'   => 'required|string|in:SI,NO',
-            'email_coordinador' => 'nullable|email|max:150',
-            'grado_bachiller'   => 'nullable|string|max:150',
-            'grado_titulo'      => 'nullable|string|max:150',
+            'codigo' => 'required|string|max:50|unique:especialidades,codigo',
+            'nombre' => 'required|string|max:200',
+            'estado' => 'required|string|in:ACTIVO,INACTIVO',
         ]);
+
+        $datos['codigo'] = strtoupper(trim($datos['codigo']));
+        $datos['nombre'] = trim($datos['nombre']);
 
         $especialidad = Especialidad::create($datos);
 
         return response()->json([
             'message' => 'Especialidad creada correctamente.',
-            'data' => $especialidad
+            'data'    => $especialidad
         ], 201);
     }
 
     /**
-     * Actualizar especialidad existente
+     * Actualizar especialidad existente buscando por código
      */
-    public function update(Request $request, Especialidad $especialidade) // Nota: Laravel usa 'especialidade' por defecto en español
+    public function update(Request $request, string $codigo)
     {
+        $especialidad = Especialidad::where('codigo', $codigo)->firstOrFail();
+
         $datos = $request->validate([
-            'programa_academico_id' => 'required|integer',
             'codigo' => [
-                'required', 'string', 'max:50',
-                Rule::unique('especialidades', 'codigo')->ignore($especialidade->id)
+                'sometimes',
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('especialidades', 'codigo')->ignore($especialidad->id),
             ],
-            'nombre'            => 'required|string|max:200',
-            'estado'            => 'required|string|in:ACTIVO,INACTIVO',
-            'agil'              => 'required|string|in:SI,NO',
-            'calendario'        => 'required|string|in:SI,NO',
-            'admision'          => 'required|string|in:SI,NO',
-            'solicitar_datos'   => 'required|string|in:SI,NO',
-            'email_coordinador' => 'nullable|email|max:150',
-            'grado_bachiller'   => 'nullable|string|max:150',
-            'grado_titulo'      => 'nullable|string|max:150',
+            'nombre' => 'required|string|max:200',
+            'estado' => 'required|string|in:ACTIVO,INACTIVO',
         ]);
 
-        $especialidade->update($datos);
+        if (isset($datos['codigo'])) {
+            $datos['codigo'] = strtoupper(trim($datos['codigo']));
+        }
+        $datos['nombre'] = trim($datos['nombre']);
+
+        $especialidad->update($datos);
 
         return response()->json([
             'message' => 'Especialidad actualizada correctamente.',
-            'data' => $especialidade
+            'data'    => $especialidad
         ]);
     }
 
     /**
-     * Eliminar especialidad
+     * Eliminar especialidad por código
      */
-    public function destroy(Especialidad $especialidade)
+    public function destroy(string $codigo)
     {
-        $especialidade->delete();
-        
+        $especialidad = Especialidad::where('codigo', $codigo)->firstOrFail();
+        $especialidad->delete();
+
         return response()->json([
             'message' => 'Especialidad eliminada correctamente.'
         ]);
