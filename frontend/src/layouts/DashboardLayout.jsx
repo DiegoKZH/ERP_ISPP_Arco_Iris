@@ -274,9 +274,9 @@ export default function DashboardLayout() {
         if (path.startsWith('/alumnos')) return 'Gestión de Alumnos';
         
         // Títulos Dinámicos para Gestión Global
-        if (path.startsWith('/gestion-global/especialidades')) return 'Gestión Global — Especialidades Académicas';
-        if (path.startsWith('/gestion-global/planes')) return 'Gestión Global — Planes de Estudio';
+        if (path.startsWith('/gestion-global/especialidad')) return 'Gestión Global — Especialidades Académicas';
         if (path.startsWith('/gestion-global/secciones')) return 'Gestión Global — Secciones y Periodos';
+        if (path.startsWith('/gestion-global/planes')) return 'Gestión Global — Planes de Estudio';
         if (path.startsWith('/gestion-global/equivalencias')) return 'Gestión Global — Equivalencias de Cursos';
         if (path.startsWith('/gestion-global')) return 'Gestión Global Académica';
 

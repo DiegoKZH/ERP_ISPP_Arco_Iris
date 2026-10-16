@@ -23,6 +23,9 @@ import RolesList from './pages/roles/RolesList';
 // Páginas de gestión de alumnos
 import GestionAlumnos from './pages/alumnos/GestionAlumnos';
 
+// Página de gestión de secciones
+import SeccionesPage from './pages/global/secciones';
+
 // Páginas de admisión
 import PadronPostulantesPage from './pages/admission/PadronPostulantesPage';
 import InscripcionPostulantePage from './pages/admission/InscripcionPostulantePage';
@@ -32,8 +35,6 @@ import CuadroMeritoPage from './pages/admission/CuadroMeritoPage';
 
 // Páginas de Gestión Global
 import GestionCarrera from './pages/global/especialidad';
-
-
 
 // Página de tesorería
 import TreasuryDashboard from './pages/treasury/TreasuryDashboard';
@@ -84,6 +85,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                                     element={<GestionAlumnos />}
                                 />
 
+                                {/* Gestión de secciones */}
+                                <Route
+                                    path="/gestion-global/secciones"
+                                    element={<SeccionesPage />}
+                                />
+
                                 {/* Admisión */}
                                 <Route
                                     path="/admission"
@@ -115,6 +122,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                                     path="/gestion-global/especialidad"
                                     element={<GestionCarrera />}
                                 />
+
                                 {/* Tesorería */}
                                 <Route
                                     path="/treasury"
