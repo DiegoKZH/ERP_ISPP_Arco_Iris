@@ -36,25 +36,31 @@ class AdmisionPostulacionController extends Controller
             'constancia'
         ]);
 
+
+        // REALIZA LA BUSQUEDA CON CUALQUIER FORMATO DE TEXTO MAYUSCULA O MINUSCULA
         if ($request->filled('admision_proceso_id')) {
             $query->where('admision_proceso_id', $request->input('admision_proceso_id'));
         }
 
+                
         if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('codigo_postulante', 'like', "%{$search}%")
-                    ->orWhere('numero_fut', 'like', "%{$search}%")
-                    ->orWhere('codigo_tesoreria', 'like', "%{$search}%")
-                    ->orWhere('codigo_modular_colegio', 'like', "%{$search}%")
-                    ->orWhereHas('persona', function ($pq) use ($search) {
-                        $pq->where('numero_documento', 'like', "%{$search}%")
-                            ->orWhere('nombres', 'like', "%{$search}%")
-                            ->orWhere('apellido_paterno', 'like', "%{$search}%")
-                            ->orWhere('apellido_materno', 'like', "%{$search}%");
+            $search = mb_strtolower(trim($request->input('search')), 'UTF-8');
+            $searchLike = '%' . $search . '%';
+
+            $query->where(function ($q) use ($searchLike) {
+                $q->whereRaw('LOWER(codigo_postulante) LIKE ?', [$searchLike])
+                    ->orWhereRaw('LOWER(numero_fut) LIKE ?', [$searchLike])
+                    ->orWhereRaw('LOWER(codigo_tesoreria) LIKE ?', [$searchLike])
+                    ->orWhereRaw('LOWER(codigo_modular_colegio) LIKE ?', [$searchLike])
+                    ->orWhereHas('persona', function ($pq) use ($searchLike) {
+                        $pq->whereRaw('LOWER(numero_documento) LIKE ?', [$searchLike])
+                            ->orWhereRaw('LOWER(nombres) LIKE ?', [$searchLike])
+                            ->orWhereRaw('LOWER(apellido_paterno) LIKE ?', [$searchLike])
+                            ->orWhereRaw('LOWER(apellido_materno) LIKE ?', [$searchLike]);
                     });
             });
         }
+
 
         if ($request->filled('estado_inscripcion')) {
             $query->where('estado_inscripcion', $request->input('estado_inscripcion'));

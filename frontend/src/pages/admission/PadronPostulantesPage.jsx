@@ -78,10 +78,9 @@ export default function PadronPostulantesPage() {
     useEffect(() => {
         loadProcesos();
     }, []);
-
+    
     useEffect(() => {
         if (selectedProcesoId) {
-            loadPostulaciones();
             loadProcesoDetalle(selectedProcesoId);
         }
     }, [selectedProcesoId]);
@@ -128,6 +127,17 @@ export default function PadronPostulantesPage() {
             setLoading(false);
         }
     };
+
+    // Búsqueda automática mientras se escribe
+    useEffect(() => {
+        if (!selectedProcesoId) return;
+
+        const temporizador = setTimeout(() => {
+            loadPostulaciones();
+        }, 350);
+
+        return () => clearTimeout(temporizador);
+    }, [search, selectedProcesoId, filtroEstado]);
 
     const handleConfirmDelete = async () => {
         if (!deleteModal.postulacion) return;
@@ -271,37 +281,77 @@ export default function PadronPostulantesPage() {
                     gap: 2,
                 }}
             >
-                <Box sx={{ display: 'flex', gap: 1.5, flexGrow: 1, maxWidth: 650 }}>
-                    <TextField
-                        placeholder="Buscar por DNI, Nombres, N° de FUT o Código de Postulante..."
-                        size="small"
-                        fullWidth
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && loadPostulaciones()}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    <Search size={18} color={THEME_COLORS.textSecondary} />
-                                </InputAdornment>
-                            ),
-                        }}
-                    />
-                    <Button
-                        variant="outlined"
-                        onClick={loadPostulaciones}
-                        disabled={loading}
-                        sx={{
-                            borderColor: THEME_COLORS.border,
-                            color: THEME_COLORS.textPrimary,
-                            textTransform: 'none',
-                            fontWeight: 600,
-                            px: 2,
-                        }}
-                    >
-                        Buscar
-                    </Button>
-                </Box>
+                
+            <Box
+                sx={{
+                    display: 'flex',
+                    gap: 1.5,
+                    flexGrow: 1,
+                    maxWidth: 850,
+                    flexWrap: 'wrap',
+                }}
+            >
+                <TextField
+                    placeholder="Buscar por DNI, Nombres, N° de FUT..."
+                    size="small"
+                    fullWidth
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            loadPostulaciones();
+                        }
+                    }}
+                    sx={{
+                        flex: '1 1 350px',
+                        minWidth: 220,
+                    }}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <Search
+                                    size={18}
+                                    color={THEME_COLORS.textSecondary}
+                                />
+                            </InputAdornment>
+                        ),
+                    }}
+                />
+
+                <Button
+                    variant="outlined"
+                    startIcon={<Search size={16} />}
+                    onClick={loadPostulaciones}
+                    disabled={loading}
+                    sx={{
+                        borderColor: THEME_COLORS.border,
+                        color: THEME_COLORS.textPrimary,
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        px: 2,
+                        whiteSpace: 'nowrap',
+                    }}
+                >
+                    Buscar
+                </Button>
+
+                <Button
+                    variant="outlined"
+                    startIcon={<RefreshCw size={16} />}
+                    onClick={() => setSearch('')}
+                    disabled={loading && !search}
+                    sx={{
+                        borderColor: THEME_COLORS.border,
+                        color: THEME_COLORS.secondary,
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        px: 2,
+                        whiteSpace: 'nowrap',
+                    }}
+                >
+                    Nueva búsqueda
+                </Button>
+            </Box>
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <TextField

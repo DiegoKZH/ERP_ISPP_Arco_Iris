@@ -51,7 +51,7 @@ import {
 const STEPS = [
     { number: 1, title: 'Datos', subtitle: 'Información personal' },
     { number: 2, title: 'Foto', subtitle: 'Imagen de perfil' },
-    { number: 3, title: 'Especialidad', subtitle: 'Carrera profesional' },
+    { number: 3, title: 'Especialidad', subtitle: 'Programa de Estudios' },
     { number: 4, title: 'Colegio', subtitle: 'Institución educativa' },
     { number: 5, title: 'Documentos', subtitle: 'Requisitos' },
     { number: 6, title: 'Pago', subtitle: 'Voucher / Formatos' },
@@ -121,6 +121,11 @@ export default function InscripcionPostulantePage() {
         colegio_provincia: 'Cusco',
         colegio_distrito: 'Cusco',
     });
+
+    // AGREGADO Buscar colegio
+    const [buscandoColegio, setBuscandoColegio] = useState(false);
+    const [mensajeColegio, setMensajeColegio] = useState('');
+    const [tipoMensajeColegio, setTipoMensajeColegio] = useState('info');
 
     // Paso 5: Documentos Requisitos
     const [formDocumentos, setFormDocumentos] = useState({
@@ -334,34 +339,91 @@ export default function InscripcionPostulantePage() {
         setFormColegio((prev) => ({ ...prev, [name]: value }));
     };
 
-    // Subida real de fotografía desde el equipo
-    const handleFileChange = (e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            if (!file.type.startsWith('image/')) {
-                setErrorMsg('El archivo seleccionado debe ser una imagen válida (JPG, PNG).');
-                return;
-            }
-            if (file.size > 5 * 1024 * 1024) {
-                setErrorMsg('La fotografía seleccionada supera los 5 MB permitidos.');
-                return;
-            }
-            setFotoFile(file);
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                setFotoUrl(event.target.result);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
+    
+    const buscarColegio = async (codigo) => {
+        const codigoLimpio = codigo.trim();
 
-    const handleRemoveFoto = () => {
-        setFotoUrl('');
-        setFotoFile(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
-    };
+            if (!/^\d{7}$/.test(codigoLimpio)) {
+                setMensajeColegio(
+                    'Ingresa un código modular válido de 7 dígitos.'
+                );
+                setTipoMensajeColegio('warning');
+                return;
+            }
+
+            setBuscandoColegio(true);
+            setMensajeColegio('');
+
+            try {
+                const respuesta =
+                    await admissionService.buscarInstitucionEducativa(codigoLimpio);
+
+                const colegio = respuesta.data;
+
+                if (!colegio) {
+                    throw new Error('No se recibieron datos de la institución.');
+                }
+
+                setFormColegio((prev) => ({
+                    ...prev,
+                    codigo_modular_colegio: colegio.codigo_modular ?? codigoLimpio,
+                    colegio_fin_secundaria: colegio.nombre ?? '',
+                    colegio_tipo_gestion:
+                        /privada/i.test(colegio.tipo_gestion ?? '')
+                            ? 'PRIVADA'
+                            : /pública|publica/i.test(colegio.tipo_gestion ?? '')
+                                ? 'PUBLICA'
+                                : '',
+                    colegio_departamento: colegio.departamento ?? '',
+                    colegio_provincia: colegio.provincia ?? '',
+                    colegio_distrito: colegio.distrito ?? '',
+                }));
+
+                setMensajeColegio(
+                    `Institución encontrada: ${colegio.nombre || 'Nombre no disponible'}.`
+                );
+                setTipoMensajeColegio('success');
+            } catch (error) {
+                const mensaje =
+                    error.response?.data?.message ||
+                    'No se pudo consultar la institución. Verifica la conexión con el servidor.';
+
+                setMensajeColegio(mensaje);
+                setTipoMensajeColegio('error');
+            } finally {
+                setBuscandoColegio(false);
+            }
+        };
+
+
+            // Subida real de fotografía desde el equipo
+            const handleFileChange = (e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                    if (!file.type.startsWith('image/')) {
+                        setErrorMsg('El archivo seleccionado debe ser una imagen válida (JPG, PNG).');
+                        return;
+                    }
+                    if (file.size > 5 * 1024 * 1024) {
+                        setErrorMsg('La fotografía seleccionada supera los 5 MB permitidos.');
+                        return;
+                    }
+                    setFotoFile(file);
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        setFotoUrl(event.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const handleRemoveFoto = () => {
+                setFotoUrl('');
+                setFotoFile(null);
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                }
+        };
 
     // Guardar Paso 1: Solicitud Inicial en BD (Código de Tesorería = DNI / Documento)
     const handleGuardarPaso1 = async (e) => {
@@ -703,7 +765,7 @@ export default function InscripcionPostulantePage() {
                    ======================================================== */}
                 {activeStep === 0 && (
                     <Box component="form" onSubmit={(e) => handleGuardarPaso1(e)}>
-                        <Box sx={{ mb: 3 }}>
+                        <Box sx={{ mb: 1.5, mt: 0.5 }}>
                             <Typography variant="h6" fontWeight={800} sx={{ color: THEME_COLORS.textPrimary }}>
                                 1. Información Personal del Postulante
                             </Typography>
@@ -726,9 +788,9 @@ export default function InscripcionPostulantePage() {
                                     value={formDatos.tipo_documento}
                                     onChange={handleDatosChange}
                                 >
-                                    <MenuItem value="DNI">DNI - Documento Nacional de Identidad</MenuItem>
-                                    <MenuItem value="CE">Carné de Extranjería (CE)</MenuItem>
-                                    <MenuItem value="PASAPORTE">Pasaporte</MenuItem>
+                                    <MenuItem value="DNI">DNI - Para peruanos</MenuItem>
+                                    <MenuItem value="CE">Carnet de Extranjería (CE)</MenuItem>
+                                    <MenuItem value="PASAPORTE">N° de Pasaporte</MenuItem>
                                 </TextField>
                             </Grid>
 
@@ -762,16 +824,19 @@ export default function InscripcionPostulantePage() {
                                             fontWeight: 800,
                                             borderColor: THEME_COLORS.primary,
                                             color: THEME_COLORS.primary,
-                                            px: 2,
+                                            px: 3,
                                             borderRadius: 1.5,
                                             '&:hover': { bgcolor: THEME_COLORS.primaryLight, borderColor: THEME_COLORS.primaryHover },
                                         }}
                                     >
-                                        {buscandoDni ? <CircularProgress size={16} /> : 'COMPROBAR'}
+                                        {buscandoDni ? <CircularProgress size={18} /> : 'COMPROBAR'}
                                     </Button>
                                 </Box>
                             </Grid>
+                        </Grid>
 
+                        {/* nueva fila -------------> */}
+                        <Grid container spacing={2.5} sx={{ mt: 1.5 }}>
                             <Grid item xs={12} sm={2.5}>
                                 <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Fecha de Inscripción
@@ -786,34 +851,10 @@ export default function InscripcionPostulantePage() {
                                 />
                             </Grid>
 
-                            <Grid item xs={12} sm={2.5}>
-                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
-                                    País
-                                </Typography>
-                                <TextField
-                                    size="small"
-                                    fullWidth
-                                    name="pais"
-                                    value={formDatos.pais}
-                                    onChange={handleDatosChange}
-                                />
-                            </Grid>
+                        </Grid>
 
-                            {/* Fila 2: Correo Electrónico, Nombres, Apellido Paterno */}
-                            <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
-                                    Correo Electrónico
-                                </Typography>
-                                <TextField
-                                    size="small"
-                                    fullWidth
-                                    placeholder="usuario@gmail.com"
-                                    name="email_personal"
-                                    value={formDatos.email_personal}
-                                    onChange={handleDatosChange}
-                                />
-                            </Grid>
-
+                        <Grid container spacing={2.5} sx={{ mt: 1.5 }}> 
+                            {/* Fila: NOmbres y Apellidos */}
                             <Grid item xs={12} sm={4}>
                                 <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Nombres *
@@ -842,7 +883,6 @@ export default function InscripcionPostulantePage() {
                                 />
                             </Grid>
 
-                            {/* Fila 3: Apellido Materno, Sexo, Fecha Nacimiento */}
                             <Grid item xs={12} sm={4}>
                                 <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Apellido Materno *
@@ -853,6 +893,29 @@ export default function InscripcionPostulantePage() {
                                     required
                                     name="apellido_materno"
                                     value={formDatos.apellido_materno}
+                                    onChange={handleDatosChange}
+                                />
+                            </Grid>
+                        </Grid>
+
+                        {/* Fila: registro de datos de nacimiento */}                                        
+                        <Box sx={{ mb: 1.5, mt: 2 }} >
+                            <Typography variant="body2" sx={{ color: THEME_COLORS.textSecondary }}>
+                                Datos de nacimiento e idioma del postulante
+                            </Typography>
+                        </Box>
+
+                        <Grid container spacing={2.5} sx={{ mt: 1.5 }}> 
+                            <Grid item xs={12} sm={4}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
+                                    Fecha Nacimiento
+                                </Typography>
+                                <TextField
+                                    type="date"
+                                    size="small"
+                                    fullWidth
+                                    name="fecha_nacimiento"
+                                    value={formDatos.fecha_nacimiento}
                                     onChange={handleDatosChange}
                                 />
                             </Grid>
@@ -875,21 +938,22 @@ export default function InscripcionPostulantePage() {
                                 </TextField>
                             </Grid>
 
-                            <Grid item xs={12} sm={4}>
+                            <Grid item xs={12} sm={2.5}>
                                 <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
-                                    Fecha Nacimiento
+                                    País
                                 </Typography>
                                 <TextField
-                                    type="date"
                                     size="small"
                                     fullWidth
-                                    name="fecha_nacimiento"
-                                    value={formDatos.fecha_nacimiento}
+                                    name="pais"
+                                    value={formDatos.pais}
                                     onChange={handleDatosChange}
                                 />
                             </Grid>
+                        </Grid>
 
-                            {/* Fila 4: Departamento, Provincia, Distrito Nacimiento */}
+                        {/* Fila: Departamento, Provincia, Distrito Nacimiento */}
+                        <Grid container spacing={2.5} sx={{ mt: 1.5 }}>                            
                             <Grid item xs={12} sm={4}>
                                 <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Departamento Nacimiento
@@ -928,7 +992,9 @@ export default function InscripcionPostulantePage() {
                                     onChange={handleDatosChange}
                                 />
                             </Grid>
+                        </Grid>
 
+                        <Grid container spacing={2.5} sx={{ mt: 1.5 }}>
                             {/* Fila 5: Lengua Materna, Segunda Lengua */}
                             <Grid item xs={12} sm={6}>
                                 <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
@@ -957,7 +1023,16 @@ export default function InscripcionPostulantePage() {
                                     placeholder="Quechua / Inglés / Ninguna..."
                                 />
                             </Grid>
+                        </Grid>
 
+                        {/* Datos de domicilio del postulante */}
+                        <Box sx={{ mb: 1.5, mt: 2 }} >
+                            <Typography variant="body2" sx={{ color: THEME_COLORS.textSecondary }}>
+                                Datos de domicilio del postulante
+                            </Typography>
+                        </Box>
+
+                        <Grid container spacing={2.5} sx={{ mt: 1.5 }}>
                             {/* Fila 6: Ubicación Domicilio */}
                             <Grid item xs={12} sm={4}>
                                 <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
@@ -997,11 +1072,13 @@ export default function InscripcionPostulantePage() {
                                     onChange={handleDatosChange}
                                 />
                             </Grid>
+                        </Grid>
 
+                        <Grid container spacing={2.5} sx={{ mt: 1.5 }}>
                             {/* Fila 7: Dirección y Celulares */}
                             <Grid item xs={12} sm={6}>
                                 <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
-                                    Dirección Domiciliaria
+                                    Dirección en la que habita
                                 </Typography>
                                 <TextField
                                     size="small"
@@ -1009,6 +1086,29 @@ export default function InscripcionPostulantePage() {
                                     placeholder="Av. o Jr., N° de lote, urbanización..."
                                     name="direccion"
                                     value={formDatos.direccion}
+                                    onChange={handleDatosChange}
+                                />
+                            </Grid>
+                        </Grid>
+
+                        <Box sx={{ mb: 1.5, mt: 2 }} >
+                            <Typography variant="body2" sx={{ color: THEME_COLORS.textSecondary }}>
+                                Datos de contacto del postulante
+                            </Typography>
+                        </Box>
+
+                        <Grid container spacing={2.5} sx={{ mt: 1.5 }}>
+                            {/* Correo Electrónico, Nombres, Apellido Paterno */}
+                            <Grid item xs={12} sm={4}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
+                                    Correo Electrónico
+                                </Typography>
+                                <TextField
+                                    size="small"
+                                    fullWidth
+                                    placeholder="usuario@gmail.com"
+                                    name="email_personal"
+                                    value={formDatos.email_personal}
                                     onChange={handleDatosChange}
                                 />
                             </Grid>
@@ -1366,7 +1466,129 @@ export default function InscripcionPostulantePage() {
                             </Typography>
                         </Box>
 
-                        <Grid container spacing={2.5}>
+                        {/* PRIMERA FILA */}
+
+                        {/* INGRESE CODIGO MODULAR */}
+                        <Grid container spacing={2} sx={{ mt: 2 }}>
+                            <Grid item xs={12} sm={4}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
+                                    Código Modular MINEDU (7 dígitos) *
+                                </Typography>
+
+                                { /*  AGREGANDO BOTON BUSCAR */}
+
+                                
+                                <Box
+                                    sx={{
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: 1,
+                                        flexWrap: 'wrap',
+                                    }}
+                                >
+                                    <TextField
+                                        size="small"
+                                        required
+                                        label="Código modular"
+                                        placeholder="Ej. 0236711"
+                                        name="codigo_modular_colegio"
+                                        value={formColegio.codigo_modular_colegio}
+                                        onChange={(e) => {
+                                            const codigo = e.target.value
+                                                .replace(/\D/g, '')
+                                                .slice(0, 7);
+
+                                            setFormColegio((prev) => ({
+                                                ...prev,
+                                                codigo_modular_colegio: codigo,
+                                            }));
+
+                                            setMensajeColegio('');
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                buscarColegio(formColegio.codigo_modular_colegio);
+                                            }
+                                        }}
+                                        helperText="Ingresa los 7 dígitos del código modular."
+                                        sx={{
+                                            width: { xs: '100%', sm: 395 },
+                                        }}
+                                    />
+
+                                    <Button
+                                        variant="contained"
+                                        onClick={() =>
+                                            buscarColegio(formColegio.codigo_modular_colegio)
+                                        }
+                                        disabled={buscandoColegio}
+                                        startIcon={
+                                            buscandoColegio
+                                                ? <CircularProgress size={18} color="inherit" />
+                                                : null
+                                        }
+                                        sx={{
+                                            minHeight: 40,
+                                            mt: { xs: 0, sm: 0.5 },
+                                            textTransform: 'none',
+                                            whiteSpace: 'nowrap',
+                                        }}
+                                    >
+                                        {buscandoColegio ? 'Buscando...' : 'Buscar colegio'}
+                                    </Button>
+                                </Box>
+
+
+
+
+                                { /*                                 
+                                <TextField
+                                    size="small"
+                                    fullWidth
+                                    required
+                                    label="Código modular"
+                                    placeholder="Ej. 0415547"
+                                    name="codigo_modular_colegio"
+                                    value={formColegio.codigo_modular_colegio}
+                                    onChange={(e) => {
+                                        const codigo = e.target.value.replace(/\D/g, '').slice(0, 7);
+
+                                        setFormColegio((prev) => ({
+                                            ...prev,
+                                            codigo_modular_colegio: codigo,
+                                        }));
+
+                                        setMensajeColegio('');
+                                    }}
+                                    onBlur={(e) => {
+                                        const codigo = e.target.value.trim();
+
+                                        if (codigo.length === 7) {
+                                            buscarColegio(codigo);
+                                        }
+                                    }}
+                                    helperText={
+                                        buscandoColegio
+                                            ? 'Buscando institución educativa...'
+                                            : 'Escribe los 7 dígitos y sal del campo para buscar.'
+                                    }
+                                /> */}
+                                
+                                {mensajeColegio && (
+                                    <Alert
+                                        severity={tipoMensajeColegio}
+                                        sx={{ mt: 1, mb: 2 }}
+                                    >
+                                        {mensajeColegio}
+                                    </Alert>
+                                )}
+                                
+                            </Grid>
+                        </Grid>
+
+                        <Grid container spacing={2.5} sx={{ mt: 3 }}>                                                 
+                                                        
                             <Grid item xs={12} sm={8}>
                                 <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Nombre del Colegio de Secundaria *
@@ -1384,48 +1606,18 @@ export default function InscripcionPostulantePage() {
 
                             <Grid item xs={12} sm={4}>
                                 <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
-                                    Código Modular MINEDU (7 dígitos) *
-                                </Typography>
-                                <TextField
-                                    size="small"
-                                    fullWidth
-                                    required
-                                    placeholder="0234567"
-                                    name="codigo_modular_colegio"
-                                    value={formColegio.codigo_modular_colegio}
-                                    onChange={handleColegioChange}
-                                />
-                            </Grid>
-
-                            <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
-                                    Año de Egreso de Secundaria *
-                                </Typography>
-                                <TextField
-                                    type="number"
-                                    size="small"
-                                    fullWidth
-                                    required
-                                    name="anio_egreso_colegio"
-                                    value={formColegio.anio_egreso_colegio}
-                                    onChange={handleColegioChange}
-                                />
-                            </Grid>
-
-                            <Grid item xs={12} sm={4}>
-                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
                                     Tipo de Gestión
                                 </Typography>
-                                <TextField
-                                    select
+                                <TextField                                    
                                     size="small"
                                     fullWidth
+                                    required
                                     name="colegio_tipo_gestion"
                                     value={formColegio.colegio_tipo_gestion}
                                     onChange={handleColegioChange}
                                 >
-                                    <MenuItem value="PUBLICA">Pública (Estatal)</MenuItem>
-                                    <MenuItem value="PRIVADA">Privada (Particular)</MenuItem>
+                                    {/*<MenuItem value="PUBLICA">Pública (Estatal)</MenuItem>
+                                    <MenuItem value="PRIVADA">Privada (Particular)</MenuItem>*/}
                                 </TextField>
                             </Grid>
 
@@ -1467,6 +1659,22 @@ export default function InscripcionPostulantePage() {
                                     onChange={handleColegioChange}
                                 />
                             </Grid>
+
+                            <Grid item xs={12} sm={4}>
+                                <Typography variant="caption" fontWeight={700} sx={{ color: THEME_COLORS.textPrimary, mb: 0.5, display: 'block' }}>
+                                    Año que Egreso del colegio *
+                                </Typography>
+                                <TextField
+                                    type="number"
+                                    size="small"
+                                    fullWidth
+                                    required
+                                    name="anio_egreso_colegio"
+                                    value={formColegio.anio_egreso_colegio}
+                                    onChange={handleColegioChange}
+                                />
+                            </Grid>
+
                         </Grid>
 
                         <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>

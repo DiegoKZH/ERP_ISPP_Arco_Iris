@@ -122,13 +122,27 @@ export default function AdmissionDashboard() {
         loadProcesos();
     }, []);
 
+    // MODIFICAMOS LA BUSQUEDA A UNA BUSQUEDA EN TIEMPO REAL  
     useEffect(() => {
         if (selectedProcesoId) {
             loadProcesoDetalle(selectedProcesoId);
-            if (currentTab === 0) loadPostulaciones();
-            if (currentTab === 1) loadCuadroMerito();
+
+            if (currentTab === 1) {
+                loadCuadroMerito();
+            }
         }
     }, [selectedProcesoId, currentTab]);
+
+    // Buscar automáticamente cuando cambia el texto.
+    useEffect(() => {
+        if (!selectedProcesoId || currentTab !== 0) return;
+
+        const temporizador = setTimeout(() => {
+            loadPostulaciones();
+        }, 350);
+
+        return () => clearTimeout(temporizador);
+    }, [searchPostulante, selectedProcesoId, currentTab]);
 
     const loadProcesos = async () => {
         try {
@@ -473,18 +487,23 @@ export default function AdmissionDashboard() {
                             >
                                 Buscar
                             </Button>
+
+                            // SE CAMBIO LIMPIAR POR NUEVA BUSQUEDA
+                           
                             <Button
                                 variant="outlined"
                                 startIcon={<RefreshCw size={16} />}
-                                onClick={() => {
-                                    setSearchPostulante('');
-                                    loadPostulaciones();
-                                }}
+                                onClick={() => setSearchPostulante('')}
                                 size="small"
-                                sx={{ textTransform: 'none', color: THEME_COLORS.secondary }}
+                                sx={{
+                                    textTransform: 'none',
+                                    color: THEME_COLORS.secondary,
+                                    whiteSpace: 'nowrap',
+                                }}
                             >
-                                Limpiar
+                                Nueva búsqueda
                             </Button>
+
                         </Box>
                     </Paper>
 

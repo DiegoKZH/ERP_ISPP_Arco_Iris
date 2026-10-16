@@ -1,6 +1,21 @@
 import api from './api';
 
 export const admissionService = {
+    
+    /* NUEVA SENTENCIA  */
+
+    
+    /**
+     * Buscar institución educativa por código modular.
+     */
+    buscarInstitucionEducativa: async (codigoModular) => {
+        const response = await api.get(
+            `/instituciones-educativas/${encodeURIComponent(codigoModular)}`
+        );
+        return response.data;
+    },
+
+
     /**
      * Get admission processes.
      */

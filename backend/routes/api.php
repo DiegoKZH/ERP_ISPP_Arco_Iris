@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AlumnoController;
+use App\Http\Controllers\Api\InstitucionEscaleController;
 use App\Http\Controllers\Api\AdmisionPostulacionController;
 use App\Http\Controllers\Api\AdmisionProcesoController;
 use App\Http\Controllers\Api\AdmisionResultadoController;
@@ -50,6 +51,12 @@ Route::get('/status', function () {
         'message' => 'API conectada correctamente a React',
     ]);
 });
+
+// Instituciones Educativas
+Route::get('/instituciones-educativas/{codigo}', [
+    InstitucionEscaleController::class,
+    'buscar',
+]);
 
 // Authentication Endpoints
 Route::prefix('auth')->group(function () {
